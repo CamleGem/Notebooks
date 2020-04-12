@@ -1125,7 +1125,9 @@ $ echo -E "\t\thello world"
 # 打印行，关闭转义字符的解释，安装字面内容打印
 # \t\thello world
 ```
+
 **printf命令**.用来格式化输出，作用是用来打印格式化字符串，效果类似c语言的printf函数。格式包括字符串本身和描述打印效果的字符。定义格式的方法是在%后面跟一个说明符，例如%f表示后面是一个浮点数，%d表示一个整数。
+
 ```shell
 格式 printf format [arguments...]
 
@@ -1143,6 +1145,7 @@ $ printf "%-20s%-15s%10.2f\n" "jody" "savage" 28
 $ printf "%s's average was %.1f%%.\n" "jody" $(( (80 + 70 + 90)/3 ))
 # jody's average was 80.0%.
 ```
+
 **变量扩展修改符（参量扩展）**。通过特定的修改符，可以检验和修改变量。这些修改符提供了一个快捷的方法来检验变量是不是被设置过，并把输出结果输出到一个变量中。见下表
 变量修改符
 
@@ -1154,7 +1157,9 @@ $ printf "%s's average was %.1f%%.\n" "jody" $(( (80 + 70 + 90)/3 ))
 | ${variable\:?word}        | 如果变量被设置了而且非空就替代变量的值，否则就打印word，然后退出shell。如果word为空就打印parameter null or not set |
 | ${variable\:offset        | 从offset位置开始提取变量的值得子字符串，如果offset为0就取整个字符串                                            |
 | ${variable\:offset:length | 从变量值的offset位置开始提取长度为length的子字符串                                                           |
+
 使用冒号和修改符来检验变量是否被设置，是否为空。若没有冒号，即使设置为null的变量也被认为是已被设置过值。
+
 ```shell
 $ fruit=peach
 $ echo ${fruit:-world}
@@ -1170,7 +1175,9 @@ $ echo ${name:-joe}
 $ echo $name
 # 空值
 ```
+
 **Note: 以上这种方法只是临时赋值，并不会永久保存在name变量里面**
+
 ```shell
 $ name=
 $ echo ${name:=peter}
@@ -1178,7 +1185,10 @@ $ echo ${name:=peter}
 $ echo $name
 # peter
 ```
-**Note: 以上这种方法会永久赋值，会将值暂时的永久保留在变量里，除非手动清除或者赋新值**
+
+**Note:
+以上这种方法会永久赋值，会将值暂时的永久保留在变量里，除非手动清除或者赋新值**
+
 ```shell
 $ foo=grapes
 $ echo ${foo:+apple}
@@ -1186,7 +1196,9 @@ $ echo ${foo:+apple}
 $ echo $foo
 # grapes
 ```
+
 **Note:以上这种方法与\:-方法正好相反，当foo值不为null时，会临时改变它的值，但是不是永久改变，因此再次打印foo的时候，值依然是原来的grapes**
+
 ```shell
 $ echo ${namex:?"namex is undefined"}
 # 因为namex为null，因此会打印后面的字符串内容即namex is undefined 
@@ -1203,6 +1215,7 @@ $ echo ${var:4:4}
 $ echo ${var:0:2}
 # no
 ```
+
 **子字符串的变量扩展**。模式匹配参数用来从字符串的前面或者后面，去掉特定的部分字符串。最常用的方法就是从路径中去点路径。
 
 | 表达式                | 功能                                             |
@@ -1216,16 +1229,317 @@ $ echo ${var:0:2}
 ```shell
 $ pathname="/usr/bin/local/bin"
 $ echo ${pathname%/bin*}
-
+# 从尾部开始删除最小匹配的内容即/bin/
 $ pathname = "/usr/bin/local/bin"
 $ echo ${pathname%%/bin*}
-
+# 从尾部开始删除最大匹配的内容即/bin/local/bin/
 $ pathname="/home/tony/.bashrc"
 $ echo ${pathname#/home}
-
+# 从头开始,删除最小匹配的内容即/home
 $ pathname="/home/tony/.bashrc"
-$ echo ${pathname##*}
-
+$ echo ${pathname##*/}
+# 从头开始，删除最大匹配的内容即/home/tony/
 $ name="Ebenezer Scrooge"
 $ echo ${#name}
+# 打印赋值给变量name的字符串的字母个数，这里共有16个字母
 ```
+
+**位置参量**。通常情况下，特定的内建变量，被称为位置参量，它们被用于从命令行向脚本传递参数，或者在函数中用于保存传递给函数的参数。这些变量称为位置参量是因为它们以数字1，2，3...区分，这些数字与它们在参量清单中的位置有对应关系。
+shell脚本的名字保存在变量$0中，位置参量可以被set命令设置，重置和清空。
+
+| 表达式 | 功能                    |
+|:------|:-----------------------|
+| $0    | 当前脚本的名字            |
+| $1-9  | 位置参数1-9              |
+| ${10} | 位置参量10               |
+| $#    | 位置参量的个数            |
+| $*    | 向所有的位置参量赋值       |
+| $@    | 同$*, 有双引号时除外      |
+| "$*"  | 赋值到"$1$2$3"等等       |
+| "$@"  | 赋值到"$1" "$2" "$3"等等 |
+
+```shell
+$ set punky tommy bert jody
+$ echo $*
+# punky tommy bert jody
+$ echo $@
+# punky tommy bert jody
+$ echo $#
+# 4
+
+$ set a b c d e f g h i j 
+$ print $10
+# a0 不会解释为$10，而是解释为$1 + 0，因此需要加上一个花括号来避免这种情况
+
+$ set file1 file2 file3
+$ eval echo \$$#
+# file3 首先$#会被替换为3，然后eval会将字符串$3解释为位置参数$3，此时该变量的值为file3，因此结果为file3
+$ set --
+# 清空所有位置参量
+```
+
+**其他特殊变量**
+shell有一些由单个字符组成的变量，在这些变量前加上$后就能访问这些变量，见表
+
+| 变量 | 含义                     |
+|:----|:------------------------|
+| $   | shell的PID               |
+| -   | 当前sh的选项              |
+| ?   | 最后一个命令的退出状态值    |
+| !   | 最后一个放入后台作业的PID值 |
+
+```shell
+$ echo The pid of this shell is $$
+
+$ echo "The options for this shell are $-"
+# 打印当前交互式bash的选项
+$ grep root /etc/passwd
+$ echo $?
+# 打印最后一个命令执行的退出状态值，成功返回0，失败返回1
+$ sleep 10 &
+$ echo $!
+# 打印最后一个被放入后台的作业PID号
+```
+
+**引用**
+引用可以保护特殊的元字符不被翻译，防止参数扩展。有三种引用的方法；反斜线，单引号，双引号。下面是对于shell来说比较特殊的元字符，需要被引用
+
+| 元字符     | 含义                       |
+|:----------|:--------------------------|
+| ;         | 命令分隔符                  |
+| &         | 后台处理                   |
+| ()        | 命令组，创建一个子shell      |
+| {}        | 命令组，但是不创建子shell    |
+| \|        | 管道                       |
+| <         | 输入重定向                  |
+| >         | 输出重定向                  |
+| Newline   | 命令终止                   |
+| Space/tab | 单词分隔符                  |
+| $         | 变量替换                   |
+| *\[]?     | 用于文件名扩展的shell的通配符 |
+
+单引号或者双引号必须成对使用。单引号可以保护一些特殊的元字符不被翻译，例如$,*,?,>,<.双引号也可以保护一些元字符不被翻译，但是允许变量和命令替换。单引号可以保护双引号，双引号也可以保护单引号。
+跟Bourne shell不同，bash尽量让你知道是不是丢失了引号。在交互状态下，如果丢失了引号，就会出现次级提示符，进而在脚本中检查整个文件，看看是不是缺少引号，如果出现引号不匹配的情况，shell就会尝试用下一个合法的引号来匹配它。如果下一个合法的引号不能匹配该引号，脚本就会终止。引号可能是程序最大的敌人之一
+**反斜线**
+反斜线用来保护一个字母不被翻译，如果把反斜线放在一对引号中，它就不被翻译，反斜线可以保护美元符号，反引号和双引号中的反斜线。
+```shell
+$ echo where are u going\?
+$ echo start on this line and \
+> go to the next line.
+$ echo \\
+# \ 这里的反斜线用来转义第二个反斜线
+$ echo '\\'
+# \\
+$ echo '\$5.00'
+# \$5.00 所有单引号中的字母都被看成没有特殊意义的字母本身，反斜线在这里没有任何特殊含义
+$ echo "\$5.00"
+# 转义美元符号，按照字母意思输出，这里反斜线不会被打印，因为是用来转义美元符号的,而上面由于是在单引号里面，反斜线不会被翻译，因此反斜线会被一起打印出来
+$ echo 'Don\'t you need $5.00?'
+> '
+# Don't you need $5.00?
+# 单引号必须是成对出现的，因此即使转义了t前面的单引号，然后需要另外一个单引号来凑成一对
+```
+**单引号**
+单引号必须成对使用，它可以保护所有的字符不被翻译。要打印一个单引号就必须使用双引号或者反斜线来引用它。
+
+```shell
+$ echo 'Hi there
+> how are u?
+> when will this end?
+>oh'
+# 由于没有出现成对单引号，因此出现了次级提示符，等待引号匹配
+
+$ echo Don\'t you need '$5.00?'
+# Don't you need $5.00? 这里对第一个单引号进行了转义，否则会与美元符号的单引号进行匹配。
+$ echo 'Mother yelled, "Time to eat!"'
+# Mother yelled, "Time to eat!"
+```
+**双引号**
+双引号必须成对出现，它们运行变量和命令替换，但是保护其他符号不被翻译
+```shell
+$ name=Jody
+$ echo "Hi $name, I am glad to meet you."
+# Hi Jody, I am glad to meet you.
+$ echo "Hey $name, the time is $(date)"
+# Hey Jody, the time is Sun Apr 12 20:51:13 CST 2020
+# 双引号中的变量和命令替换依然会正常执行，不会被禁止解释
+```
+#### 命令替换
+在需要把命令的输出结果赋值给一个变量或者需要用字符串替换变量的输出结果时，我们可以使用变量替换，所有的shell都使用反引用的方法进行命令替换。bash有两种命令替换的方法：第一种是老的方法把命令放在反引号中，另外一种是新的korn shell风格，把命令放在一对圆括号中，并在前面缀上一个美元符号。
+bash做命令替换的方法是执行命令，并把其执行结果返回到标准输出。在传统的命令替换方式下，反斜线除了在美元符号，单引号和斜线后面的情况以外，还都保持着自己的字面意思。在korn风格的方式下，括号中的所有字符都被当做命令来看待。
+命令替换时可以嵌套的，在使用的嵌套命令替换时，如果使用的旧风格，在内部反引用前必须使用反斜线转义。
+```shell
+格式 `Linux command` # 旧方法
+     $(Linux command) # 新方法
+```
+```shell
+$ echo "The hour  is `date +%H`"
+# date命令的输出被替换到字符串中
+$ name=`awk -F '{print $1}' database`
+$ echo $name
+# 将awk命令返回的结果赋值给name
+$ ls `ls /etc`
+#
+$ set `date`
+# set命令把date命令的输出结果赋值给位置参量，空格把相应的参量分割开来
+$ echo $*
+# 表示所有位置参量
+$ echo $2 $6
+# 打印第二个和第六个位置参量的值
+$ echo `basename \`pwd\``
+# 首先取pwd的值为/root，然后执行basename命令来获取基础文件名，结果为root
+
+```
+**新方法**
+```shell
+$ d=$(date)
+$ echo $d
+# Sun Apr 12 21:41:34 CST 2020
+$ lines=$(cat file1)
+$ echo The time is $(date +%H)
+$ machine=$(uname -n)
+$ echo $machine
+# chef-client.com
+$ pwd
+$ dirname="$(basename $(pwd))"
+$ echo $dirname
+# root
+$ echo $(cal)
+# April 2020 Su Mo Tu We Th Fr Sa 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30
+$ echo "$(cal)"
+#    April 2020     
+#Su Mo Tu We Th Fr Sa
+#          1  2  3  4
+# 5  6  7  8  9 10 11
+#12 13 14 15 16 17 18
+#19 20 21 22 23 24 25
+#26 27 28 29 30
+# 加双引号会把换行符保留，不加换行符，只会保留最后一个换行符。
+```
+#### 数学扩展
+shell通过运算数学表达式和替换结果来进行数学扩展。在没有双引号和表达式嵌套的情况下，表达式可以被直接处理。
+有两种数学表达式的格式
+```shell
+$[ expression ]
+$(( expression ))
+```
+```shell
+$ echo $[ 1 + 2 + 3 ] #方括号两边是否有空格不影响结果，可以正常运行
+# 6
+$ echo $(( 1 + 2 + 3 )) #括号两边是否有空格不影响结果，可以正常运行
+# 6
+```
+#### 扩展的顺序
+当进行变量扩展，命令扩展，数学表达式扩展以及路径扩展的时候，shell是遵循一定顺序的。假设变量没有被引用，那么shell的处理顺序应该如下所示
+* 大括号扩展
+* Tilde扩展
+* 参数扩展
+* 变量替换
+* 命令替换
+* 数学扩展
+* 单词分割
+* 路径扩展
+
+#### 数组
+bash2.x版本提供了创建一维数组的能力。数组允许你把一串数字，一串名字或者一串文件放在一个变量中。使用内建功能declare -a 可以创建数组，或者在变量后面增加脚标直接创建数组如x\[0]=5, 数组的脚标是从0开始的。数组的尺寸没有限制，脚标也不必须是一定顺序的数字。获取数组中某个元素的语法是${arrayname\[index]}。如果declare命令后面有-a和-r选项，那么就创建只读数组。
+```shell
+declare -a variable_name
+variable=(item1 item2 item3)
+
+$ declare -a num=(45 33 100 65)
+$ declare -ar names
+$ names=(Ton Dick Harry) # 无法赋值，因为names是只读的变量
+$ states=(ME [3]=CA CT)
+$ x[0]=55
+$ n[4]=100
+```
+向数组赋值的时候，脚标自动从0开始，每次增加1。在每次赋值时，不一定要提供多个值，也不需要按照顺序提供。清空一个数组，使用unset命令后面跟数组变量的名字。清空一个元素则使用unset命令后面是arrayname\[subscript]。
+declare，local，read-only命令都可以使用-a选项创建数组。read命令通过-a选项从标准输入读入一组单词赋值给数组的元素。
+```shell
+$ declare -a friends
+$ friends=(larry wall matz)
+$ echo ${friends[0]}
+# larry
+$ echo ${friends[1]}
+# wall
+$ echo ${friends[2]}
+# matz
+$ echo "All friends ${friends[*]}"
+# All friends larry wall matz
+$ echo "Total count is ${#friends[0]}"
+# Total count is 3, 表示第一个元素的长度为5
+$ unset friends[0]
+# 清空数组第一个元素的值
+$ unset friends
+# 清空数组值
+```
+```shell
+$ x[3]=100
+$ echo ${x[*]}
+# 由于只有第三个元素被赋值100，因此前两个元素不存在，数组的大小仍为1.
+# ${x[*]}显示数组所有元素，由于只有100，因此显示100
+$ echo ${x[0]}
+# 空值
+$ echo ${x[3]}
+# 100
+$ states=(ME [3]=CA [2]=CT)
+$ echo ${states[*]}
+# ME CA CT
+$ echo ${states[0]}
+# ME
+$ echo ${states[1]}
+# 空值
+$ echo ${states[2]}
+# CT
+$ echo ${states[3]}
+# CA
+```
+#### 函数
+当前shell中有一组组织在一起并命名的命令叫做bash函数。它们看起来像脚本，但是效率更高。一旦被定义，函数就成为shell内存中的一部分，可以被调用，而不必从文件中读取该段代码。函数通常在脚本的模块化书写风格中被使用。一旦被定义，函数就可以被反复使用。虽然在交互的方式下函数可以在提示符下定义，但是最多的还是在用户的初始化函数中被定义，.bash_profile。在引用前，函数必须是被定义的。
+**定义函数**
+定义函数有两种方式，一种是旧的Bourne shell方式，函数名后面是一对空括号，然后是函数的定义。新的方式是使用关键字function，后面是函数名和函数定义，如果使用新的方式，那么括号是可选的。函数定义被放在一对大括号**中间**。它包括一些用分号分隔的命令。最后一个命令后面也需要分号。大括号前面需要保留一些空间。所有需要向函数传递的参数都被当做位置参量来处理。位置参量在函数中是本地变量。内建的local命令运行你在函数内部创建本地变量。函数是可以递归的，例如不断引用自身直到一定的次数。
+```shell
+格式 function_name () { commands; commands; }
+    function function_name { commands; commands; }
+    function function_name () { commands; commands; }
+```
+```shell
+$ function greet { echo "Hello $LOGNAME, today is $(date)"; }
+$ greet
+# Hello root, today is Sun Apr 12 22:37:52 CST 2020
+$ greet () { echo "Hello $LOGNAME, today is $(date)"; }
+$ greet
+# Hello root, today is Sun Apr 12 22:37:52 CST 2020
+$ declare -f
+# 显示当前shell中所有被定义的函数
+$ declare -F
+# 显示当前shell中所有被定义的函数的名字
+$ export -f greet
+# 将函数导出为全局函数
+$ bash
+$ greet
+# Hello root, today is Sun Apr 12 22:37:52 CST 2020
+
+$ function fun {
+  echo "The current working directory is $PWD"
+  echo "Here is a list of ur files: "
+  ls
+  echo "Today is $(date +%A).";
+}
+# 定义一个fun函数，括号中的命令写在不同行，因此无需分号，如果是写在一行就需要分号分隔，左右半边括号后面至少需要一个空格
+$ function welcome { echo "Hi $1 and $2"; }
+# 定义了两个位置参量的函数welcome
+$ set jane anna lizzy
+# 设置 位置参量
+$ echo $*
+# jane anna lizzy
+$ welcome johan joe
+# johan and joe
+$ echo $1 $2
+# jane anna 
+$ unset -f welcome
+# 清空函数，这个函数不再被定义
+```
+**Note: 函数的位置参量只在函数内部使用，不能供函数外部使用。在命令行设置一些位置参量，它们对于函数的位置参量没有影响。**
+**列出和清空函数**
+列出函数和它们的定义使用命令declare在bash2.x及以上版本中declare -F只列出函数的名字，函数的定义将跟局部变量一起送到标准输出。unset -f命令可以清空这些函数。
