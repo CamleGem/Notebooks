@@ -1161,10 +1161,10 @@ $ printf "%s's average was %.1f%%.\n" "jody" $(( (80 + 70 + 90)/3 ))
 
 | 修改符                     | 解释                                                                                                   |
 |:--------------------------|:------------------------------------------------------------------------------------------------------|
-| ${variable\:-word}        | 如果变量被设置了而且非空(null)就替代变量的值，否则设置为word                                                   |
-| ${variable\:=world}       | 如果变量被设置了而且非空就替代变量的值，否则就把变量永久设置为word                                               |
+| ${variable\:-word}        | 如果变量被设置了而且非空(null)就保持原来的值，否则设置为word                                                   |
+| ${variable\:=world}       | 如果变量被设置了而且非空就保持原来的值，否则就把变量永久设置为word                                               |
 | ${variable\:+world}       | 如果变量被设置了而且非空就替代word，否则什么也不做                                                            |
-| ${variable\:?word}        | 如果变量被设置了而且非空就替代变量的值，否则就打印word，然后退出shell。如果word为空就打印parameter null or not set |
+| ${variable\:?word}        | 如果变量被设置了而且非空就保持原来的值，否则就打印word，然后退出shell。如果word为空就打印parameter null or not set |
 | ${variable\:offset        | 从offset位置开始提取变量的值得子字符串，如果offset为0就取整个字符串                                            |
 | ${variable\:offset:length | 从变量值的offset位置开始提取长度为length的子字符串                                                           |
 
@@ -1707,7 +1707,7 @@ FINISH # 结束符前后不允许有空格
 如果想要允许最后一个结束符前面有一个或多个空格，需要在开始的<<符号后面加上一个短横杠。
 
 ```shell
-cat << -FINISH
+cat <<- FINISH
 hello world
 i can find u!
  FINISH
@@ -1894,8 +1894,8 @@ $ echo $i
 $ echo $(( i=i+10 ))
 # 也可以直接这样来取的结果，括号里面的空格可有可无
 
-$ echo $[ i=i+11 ] # wrong
-# 这种数学表达式不支持计算赋值形式，只能是[ 1 + 2 ]这样的形式
+$ echo $[ i=i+11 ]
+
 ```
 
 #### 浮点数计算
@@ -1996,7 +1996,7 @@ $ echo $? #无法搜索到wall的用户，因此?变量的值为1，表示搜索
 
 **内建test命令**
 通常用内建的test命令给表达式赋值，这个命令也用来连接括号。可以使用test命令，或用一系列的括号代替test命令。只有test命令或者使用方括号时，表达式不能赋值。因为空格在在字符串中用来分隔单词，所以包括空格的单词需要使用引号。
-在bash2.x以上版本时，[[]]可以用来给表达式赋值（内建混合test命令）。包含空格的字符串在整体使用时必须被引号引用，在简单的test命令中，逻辑符号&&(逻辑和)和||(逻辑或)可以替代-a或者-o选项。
+在bash2.x以上版本时，\[\[\]\]可以用来给表达式赋值（内建混合test命令）。包含空格的字符串在整体使用时必须被引号引用，在简单的test命令中，逻辑符号&&(逻辑和)和||(逻辑或)可以替代-a或者-o选项。
 虽然test命令可以给数学表达式赋值，但最好还是用let给数学表达式赋值，因为它有丰富的类c语言操作符。let命令可以利用双括号简化。
 无论使用test命令，混合命令还是let命令，表达式的结果都将被检验，退出状态值是0表示成功，反之则表示失败。
 
@@ -2051,6 +2051,8 @@ $ echo $[[ nums = 10 + nums ]] ❌
 $ [[ num = 1 + num ]] ❌
 $ echo $[[ 1 + 1 ]] ❌
 
+# 混合测试操作符不支持数学扩展
+
 
 
 $ let "var = 1 + 2" ✅
@@ -2063,14 +2065,10 @@ $ let var = 1 + 3 ❌
 
 $ [[ 1 > 0 && -1 < 0 ]] && echo "exectue successfully" ✅
 $ [ 1 -gt 0 -a -1 -lt 0 ] && echo "exectue successfully" ✅
-$ [ 1 > 0 -a -1 < 0 ] && echo "exectue successfully" ✅
-
 $ [ 1 -gt 0 ] && echo "exectue successfully" ✅
 $ [ 1 -lt 2 ] && echo "exectue successfully" ✅
 $ [ 1 -eq 1 ] && echo "exectue successfully" ✅
 
-$ [ 1 == 1 ] && echo "exectue successfully" ✅
-$ [ 1 = 1 ] && echo "exectue successfully" ✅
 #以上这两种形式都是被允许的
 
 $ (( 1 > 0 )) && echo "hello"
@@ -2115,19 +2113,12 @@ table2
 | \[\[ pattern1 && pattern2 \]\]   |            |
 | \[\[ pattern1 \|\| pattern2 \]\] |            |
 | [\[ !pattern \]\]                |            |
+
 NOTE: pattern可以包含元字符，在字符判断中，pattern2必须包含在引号中
-双圆括号形式不支持-gt -lt等形式的操作符，只支持> < 这种形式
-table3
+双圆括号形式不支持-gt -lt等形式的操作符，只支持> < 这种形式 table3
 
 | 整数判断            | 判断是否为真 |
 |:-------------------|:-----------|
-| \[ int1 > int2 ]   |            |
-| \[ int1 < int2 ]   |            |
-| \[ int1 >= int2 ]  |            |
-| \[ int1 <= int2 ]  |            |
-| \[ int1 = int2 ]   |            |
-| \[ int1 == int2 ]  |            |
-| \[ int1 != int2 ]  |            |
 | \[ int1 -eq int2 ] |            |
 | \[ int1 -gt int2 ] |            |
 | \[ int1 -lt int2 ] |            |
@@ -2143,8 +2134,7 @@ table4
 | \[ file1 -ot file2 ] |            |
 | \[ file1 -ef file2 ] |            |
 
-table5
-算术和比较操作符
+table5 算术和比较操作符
 
 | 操作符                       | 含义                  |
 |:----------------------------|:---------------------|
@@ -2163,7 +2153,10 @@ table5
 | = *= += -= <<= >>= &= ^= != | 快捷方式例如等同于i=1+i |
 
 #### if命令
-最简单的判断形势就是if，if结构后面的命令执行并返回退出状态值，退出状态值通常由程序的作者决定。如果退出状态值为0，命令成功就执行then后面的语句。在C shell中，if后面的表达式必须跟c语言一样是一个布尔型的表达式。但是在其他shell中，可以是一组命令。如果命令退出状态值是0就执行关键字后面的语句块，直到遇到fi，fi终止if块。退出状态值非0，则意味着出现了错误，关键字then后面的语句被忽略。执行fi后面的语句。
+
+最简单的判断形势就是if，if结构后面的命令执行并返回退出状态值，退出状态值通常由程序的作者决定。如果退出状态值为0，命令成功就执行then后面的语句。在C
+shell中，if后面的表达式必须跟c语言一样是一个布尔型的表达式。但是在其他shell中，可以是一组命令。如果命令退出状态值是0就执行关键字后面的语句块，直到遇到fi，fi终止if块。退出状态值非0，则意味着出现了错误，关键字then后面的语句被忽略。执行fi后面的语句。
+
 ```shell
 格式 
 if command 
@@ -2236,7 +2229,9 @@ then
     echo Glad to hear it.
 fi         
 ```
+
 **exit命令和变量?**.exit命令用来结束脚本返回命令行。如果你希望在某种条件下退出脚本，可以使用该命令。exit命令的参数是一个在0~255之间的数字。如果参数是0，则表示顺利退出，而非0参数表示出现了一些问题。给exit命令的参数保存在?变量中。
+
 ```shell
 #!/usr/bin/bash
 if (( $# != 2 )) 
@@ -2259,7 +2254,9 @@ fi
 
 find / -xdev  -mtime $1 -size=$2
 ```
+
 **检验空变量**。当检验的变量值为空时，使用双引号或者test命令会失败。
+
 ```shell
 #!/usr/bin/bash
 
@@ -2276,7 +2273,9 @@ then
 fi
         
 ```
+
 嵌套if命令
+
 ```shell
 if command
 then
@@ -2285,6 +2284,7 @@ else
     command(s)
 fi        
 ```
+
 ```shell
 #!/usr/bin/bash
 echo "Please enter a name which u want to check"
@@ -2297,6 +2297,7 @@ else
     exit 1
 fi    
 ```
+
 ```shell
 #!/usr/bin/bash
 
@@ -2311,6 +2312,7 @@ fi
 ```
 
 **if/elif/else命令**
+
 ```shell
 if  command
 then
@@ -2323,7 +2325,9 @@ else
 fi            
 
 ```
+
 sample
+
 ```shell
 #!/usr/bin/bash
 echo -n "How old are you? "
@@ -2350,5 +2354,528 @@ else
    echo "Sorry i aksed"
 fi            
             
+
+```
+
+**文件检验**
+在写脚本的时候经常的出现这样的情况--需要一个带有特定权限，特定类型或者特定属性的特定文件。你会发现，文件检验是写依赖脚本中非常必要的部分。
+文件检验操作符列表
+
+| 检验操作符    | 检验是否为真              |
+|:------------|:------------------------|
+| -b filename | 特定块文件                |
+| -c filename | 特定字符文件              |
+| -d filename | 目录存在                 |
+| -e filename | 文件存在                 |
+| -f filename | 非目录普通文件存在         |
+| -G filename | 文件存在并属于一个有效的GID |
+| -g filename | 设置set-group-ID         |
+| -k filename | 粘滞位设置                |
+| -L filename | 文件是一个符号链接         |
+| -p filename | 文件是一个管道            |
+| -O filename | 文件存在并属于一个有效的UID |
+| -r filename | 文件可读                 |
+| -S filename | 文件是一个套接字           |
+| -s filename | 文件大小非0               |
+| -t filename | fd已经在终端打开          |
+| -u filename | 设置set-user-ID          |
+| -w filename | 文件可写                 |
+| -x filename | 文件可执行                |
+
+```shell
+#!/usr/bin/bash
+file=./hello
+if [ -d $file ]
+then
+   echo "$file is a directory"
+elif [ -f $file ]
+then
+   if [[ -r $file &&  -w $file && -x $file ]]
+   then
+       echo "you have read, write,and exectue permission on $file"
+   fi
+else
+   echo "$file is neither a file nor a directory"
+fi               
+```
+
+**null命令**
+null命令用冒号表示，是一个内建的什么都不做的命令，返回状态值为0.如果在if命令后面没有内容，同时又要避免产生错误信息，就需要在then后面写null语句。通常命令作为loop命令的参数来建立一个无限循环。
+
+```shell
+#!/usr/bin/bash
+name=tom
+if grep "$name" /etc/passwd >& /dev/null
+then
+   :
+else
+   echo "$name not found in database"
+   exit 1
+fi      
+```
+
+```shell
+$ DATAFILE=
+$ : ${DATAFILE:=$HOME/db/datafile}
+$ echo $DATAFILE
+$ : ${DATAFILE:=$HOME/db/junk} #这里不加null的话在终端会提示语法错误
+$ echo $DATAFILE
+# 结果与第一次结果相同，因为变量已经有值，因此不会再赋新的值。
+```
+
+```shell
+#/usr/bin/bash
+echo "Enter a number"
+read number
+if expr "$number" + 0 >& /dev/null
+then
+    :
+else
+   echo "You did not enter an integer value"
+   exit 1
+fi   
+```
+
+**case命令**
+case命令是一个多路分支判断语句，可以用来替换if/elif结构。case命令会尝试用变量匹配value1,
+value2.....直到匹配到。一旦一个值匹配了case变量，就执行这个值后面的语句，直到两个分号为止。然后就从esac后面开始执行。
+如果case变量没有被匹配，程序就执行*)后面的语句，直到遇到；或者esac为止。*)的作用是跟在if/elif中的else的作用是一样的。case值中允许出现shell通配符和竖线作为OR操作符。
+
+```shell
+格式
+case variable in
+value)
+     command
+     ;;
+value2)
+     command
+     ;;
+*)
+     command
+     ;;
+esac
+               
+```
+
+```shell
+#!/usr/bin/bash
+
+echo -n "Choose a foreground color for your xterm window: "
+read color
+case $color in
+[Bb]l??)
+       echo "The color is blue"
+       ;;
+[Gg]ree*)
+       echo "The color is grey"
+       ;;
+*)
+       echo "No match color"
+       ;;
+esac                     
+```
+
+**用here文档和case命令建立菜单**。here文档和case命令通常一起使用。here文档用来建立在屏幕上显示出来的菜单选项。用户被要求在其中选择，case命令用来检验用户的选择并执行相应的命令。
+
+```shell
+$ cat <<- EDIT
+    1) linux
+    2) xterm
+    3) sun
+EDIT
+ 
+read choice
+case $choice in
+1) 
+   echo "linux"
+   ;;
+2) 
+   echo "xterm"
+   ;;
+*)
+   echo "sun"
+   ;;
+esac
+         
+```
+
+#### 循环命令
+
+循环命令就是反复执行一个命令或者一组命令，直到完成事前设置好的次数或者达到某种条件。bash
+shell有三种循环：for循环，while循环和until循环。 **for命令**
+for循环命令用于根据项目清单确定的次数执行命令。例如，你可以根据文件或者用户清单执行相同的命令。for命令后面紧跟着用户自定义变量-关键字in，然后是一个单词清单。第一次执行循环，单词列表中的第一个单词被赋值给变量。一旦单词被赋值给赋值变量，就进入循环体，执行关键字
+do和done之间的命令。下一次的循环，第二个单词被赋值给变量，如此继续。循环体由do开始到done结束。当清单中的所有单词都轮换过一次以后，循环结束，程序控制继续done后面的语句。
+
+```shell
+格式
+
+for  variable in world_list
+do
+  commands
+done
+
+#如果需要将for循环写成一行，则单词列表和do之间需要用分号来分隔.
+for variable in world_list; do commands; done  
+```
+
+示例一
+
+```shell
+#!/usr/bin/bash
+for name in Tom Dick Harry Joe
+do 
+   echo "Hi, $name"
+done   
+echo "Out of loop."
+
+```
+
+示例二
+
+```shell
+#!/usr/bin/bash
+for person in $(cat my file)
+do 
+   mail $person < letter
+   echo "$person was sent a letter."
+done
+   
+echo "The letter has been sent."
+```
+
+示例三
+
+```shell
+#!/usr/bin/bash
+dir=/home/tony/backupscripts
+for file in backup{1..5} 
+do
+  if [ -f $file ] # 检查当前目录下该文件是否真实存在
+  then
+      cp "$file" $dir/$file.bak
+      echo "The $file is backuped in $dir"
+  fi
+done      
+
+```
+
+单词列表中的$@和$*变量。在不使用双引号的时候是一样的。当使用引号的时候，$*的值是一个字符串，而$@的值是一组分开的单词。
+
+```shell
+#!/usr/bin/bash
+# scriptname: greet
+for name in $*
+do 
+  echo "Hi $name"
+done  
+(The Command Line)
+$ greet Tom Jerry Larry Wall
+# Tom
+# Jerry
+# Larry
+# Wall
+```
+
+示例四
+
+```shell
+#!/bin/bash
+#scriptname: perm_check
+for filename
+do
+  if [[ -f $filename && ! -x $filename ]] 
+  then
+     chmod +x $filename
+     echo "$filename now has exectue permission."
+  fi
+done
+(The Command Line)     
+$ perm_check * # 通配符会扩展成当前目录下面的所有文件
+# file1 now has exectue permission.
+# file2 now has exectue permission.
+```
+
+#### while命令
+
+while命令判断它后面的命令，如果退出状态值是0，就执行循环体内的命令，直到done，控制返回循环体的顶部，while命令将再次检验命令的退出状态，直到退出状态为非0，程序继续执行done后面的语句。
+
+```shell
+格式
+
+while command
+do
+  commands
+done  
+
+```
+
+示例一
+
+```shell
+#!/usr/bin/bash
+num=0
+while (( $num < 10 ))
+do
+  echo -n "$num"
+  (( num = $num + 1 )) # or let num+=1 or (( num += 1 ))
+done
+```
+
+示例二
+
+```shell
+#!/usr/bin/bash
+# scriptname: quiz
+echo "Who was the 2nd U.S president to be impeached?"
+read answer
+while [[ "$answer" != "Bill Clinton" ]]
+do
+  echo "wrong try again"
+  read answer
+done
+echo "You got it"
+```
+
+示例三
+
+```shell
+#!/usr/bin/bash
+# script: sayit
+echo "Type q to quit."
+go=start
+while [ -n "$go" ]
+do  
+  echo -n I love you
+  read word
+  if [[ $word = [Qq] ]]
+  then
+     echo "I will always love you!"
+     go= # or break
+  fi  
+done     
+
+```
+
+**until命令**
+until命令的用法跟while命令的用法类似，只是在until后面的语句为假的时候执行循环体，例如一个命令的退出状态值返回为非0。当到达done关键字以后就自动返回循环体的顶部，until命令再次检验命令的退出状态值。循环一直继续，直到until后面的退出状态值为0。当退出状态值为0时，循环退出，程序从done后面继续。
+
+```shell
+until command
+do
+  commands
+done
+```
+
+示例一
+
+```shell
+#!/usr/bin/bash
+until who | grep Yang
+do
+  sleep 5
+done
+# 除非Yang登录了终端，否则程序每隔5秒循环一次  
+```
+
+示例二
+
+```shell
+#!/usr/bin/bash
+
+let hour=0
+until (( $hour > 24 )) # or [ $hour -gt 24 ]
+do
+   case "$hour" in
+   [0-9]|1[0-1]) 
+        echo "Good morning!"
+        ;;
+   12)
+        echo "Lunch time!"
+        ;;
+   1[3-7])
+        echo "Siesta time!"
+        ;;
+   *)
+        echo "Good night!"
+        ;;
+   esac
+   
+   let hour+=1
+done   
+```
+
+**select命令和菜单**
+here文档是建立菜单的简单方法，但是bash介绍了另外一种循环机制，叫做select循环，主要的作用就是建立菜单。一个数字化的菜单显示在标准错误上，PS3用来提示用户输入。默认的PS3是#？。在PS3提示显示以后，shell就等待用户输入。输入的是该菜单中的数字，若输入被保存在指定变量REPLY中，则变量REPLY中的数字与括号右边选项清单中的字符串有着对应关系。
+case命令与select命令连用，允许用户在菜单中选择，基于选择执行相应的命令。LINES和COLUMNS变量可以用来决定在终端显示的菜单的层。输出显示在标准错误上，每一个选项前都有数字和右括号，PS3提示显示在菜单的底部。因为select命令是一个循环命令，因此一定要记得用break命令退出循环或者exit命令退出脚本。
+
+```shell
+格式
+select var in wordlist
+do
+  commands
+done  
+```
+
+示例一
+
+```shell
+#!/usr/bin/bash
+PS3="Select a program to exectue: "
+select program in 'ls -F' pwd date
+do
+  $program
+done
+  
+(The Command Line)
+Select a program to exectue: 2
+1) ls -F
+2) pwd
+3) date
+# /home/yang
+# 在执行脚本的时候，PS3里面的字符串会显示在菜单的底部
+```
+
+示例二
+
+```shell
+#!/usr/bin/bash
+PS3="Please choose one of the three boys: "
+select name in tom jerry matz
+do
+   case $name in
+   tom)
+      echo "Tom is a cool dude!"
+      break
+      ;;
+   jerry|matz)
+      echo "Jerry and matz are both wonderful"
+      break
+      ;;
+   *)
+     echo "$REPLY is not one of your choice" 1>&2 
+     echo "Try again"
+     ;;
+   esac       
+done
+```
+
+示例三
+
+```shell
+#!/usr/bin/bash
+PS3="Please enter the Tom's age: "
+select choice in 20 30 40
+do
+  case $REPLY in
+  1) 
+    echo "you choose the right age ${choice}!"
+    break;;
+  2)
+    echo "you choose the wrong age ${choice}!"
+    break;;
+  3)
+    echo "you choose the wrong age ${choice}!"
+    break;;
+  *)
+    echo -e "$REPLY is not a valid choice, try again!\n"
+    REPLAY= # cause the menu to be redisplayed
+  esac
+done        
+
+
+```
+
+#### looping命令
+
+在某些情况下，需要中断循环并回到循环顶部，或者需要一种方法结束当前循环，bash提供了一个命令来处理这些情况。
+**shift命令**。shift命令用来把参量列表位移指定次数。没有参数的shift把参数变量向左位移一位。一旦位移发生，被位移出列表的参数就被永远删除了。通常在while循环中，shift用来读取列表中的参量。
+
+```shell
+$ set $(date)
+$ echo $# # 5
+$ shift
+$ echo $# #参量往左移动一位，此时参量个数减1，变为4
+$ shift 2
+$ echo $# #参量往左移动两位，此时参量个数继续减2，变为2
+$ shift 5
+# 如果尝试位移多于参量总数的次数，shell会打印错误消息.
+
+```
+
+```shell
+#!/usr/bin/bash
+set $(date)
+while (( $# > 0 ))
+do
+  echo -n "$# "
+  shift
+done
+# 6 5 4 3 2 1
+```
+**内建break命令**
+内建break命令用来从循环中抢先退出，但是不退出程序。执行break以后，控制从关键字done开始执行。break命令可以从内层循环中退出，所以如果你使用循环嵌套的话，break可以用一个数字作为参数，运行你指定break强行退出的循环的层数。如果你有三层嵌套循环，最外面的循环数是1，中间层的循环是2，最里面的循环数为3。在退出无限循环的时候，break非常有用。
+```shell
+格式
+break[n]
+
+```
+示例一
+```shell
+#!/usr/bin/bash
+while true; do
+    echo Are you ready to move on\?
+    read answer
+    if [[ "$answer" == [Yy] ]]
+    then
+        break
+     else
+        echo "Try again"
+     fi
+done
+echo "Here we are"           
+```
+**continue命令**
+如果某些条件为真，continue命令控制跳转到循环顶部。所有continue命令后面的语句都将被忽略。如果嵌套循环，continue命令就跳转到最内的循环的顶部。如果一个数字作为它的参数，控制就可以在指定的任何层的循环的顶部重新开始执行。如果你有三层循环嵌套，最外面的循环号是3，中间层的循环号是2，最内的循环号是1。
+```shell
+#!/usr/bin/bash
+for name in $(cat mail_list)
+do 
+  if [[ "$name" == ricard ]];then
+     continue
+  else
+     mail $name < memo
+  fi      
+done
+
+# continue后面的数字如果大于循环的嵌套层数，则会退出循环
+```
+**嵌套循环和循环控制**
+当你使用嵌套循环的时候，continue命令和break命令都被赋予一个整数作为参数，控制流到第几层循环。
+```shell
+#!/usr/bin/bash
+for month in Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec
+do
+  for week in 1 2 3 4
+  do 
+    echo -n "Processing the month of $month. ok?"
+    read answer
+    if [[ "$answer" == n || -z "$answer" ]]
+    then
+       continue 2
+    else
+       echo -n  "process week $week of $month ?"
+       read answer
+       if [[ "$answer" = n || -z $answer ]]
+       then
+           continue
+       else    
+          echo "Now processing week $week of $month."
+          sleep 1 
+          echo "Done processing..."
+       fi      
+    fi
+  done
+done    
+       
 
 ```
