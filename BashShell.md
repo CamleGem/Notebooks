@@ -3087,3 +3087,116 @@ fi
 # 最后得到的结果为uid=xxxx, 如果当前用户为root则为0
 # 接下来的命令判断当前用户是否为root用户，如果不是打印字符串，然后退出程序
 ```
+#### 用getopts处理命令行选项
+如果你的脚本你需要一些命令行选项，位置参量并不总是最有效的。例如ls命令有一些命令行选项和参数（每个选项前面需要一个前导破折号，但是参数不需要），选项可以通过许多的方式传递给程序：例如ls -l -i -F等。如果脚本需要参数，位置参量可能只用来处理参数，，例如ls -l -F -i。每一个破折号选项都相应的保存在$1, $2, $3中。但是，如果用户用一个破折号引导所有的选项会发生什么呢？-ilF就赋值给$1。getopts提供了一种像ls那样处理选项和参数的方法。getopts允许脚本程序处理各种方式组合的参数。
+getopts的命令格式如下：
+```shell
+getopts optstring variable
+```
+getopts命令（注意是复数）内建于bashshell。它跟近亲getopt看起来很像，但多了一些扩展功能。与getopt不同，前者将命令行上选项和参数处理后只生成一个输出，而getopts命令能够和已有的shell参数变量配合默契。每次调用它时，它一次只处理命令行上检测到的一个参数。处理完所有的参数后，它会退出并返回一个大于0的退出状态码。这让它非常适合用解析命令行所有参数的循环中。
+optstring值类似于getopt命令中的那个。有效的选项字母都会列在optstring中，如果选项字母要求有个参数值，就加一个冒号。要去掉错误消息的话，可以在optstring之前加一个冒号。getopts命令将当前参数保存在命令行中定义的variable中。getopts命令会用到两个环境变量。如果选项需要跟一个参数值，OPTARG环境变量就会保存这个值。OPTIND环境变量保存了参数列表中getopts正在处理的参数位置。这样你就能在处理完选项之后继续处理其他命令行参数了。
+
+```shell
+#!/usr/bin/env bash
+#scriptname: test_opt.sh
+echo
+while getopts  :ab:c opt
+do
+  case $opt in
+      a) echo "Found the -a option";;
+      b) echo "Found the -b option, with value $OPTARG";;
+      c) echo "Found the -c option";;
+      *) echo "Unknown option: $opt";;
+  esac
+done
+```
+while语句定义了getopts命令，指明了要查找哪些命令行选项，以及每次迭代中存储它们的变量名（opt）。你会注意到在本例中case语句的用法有些不同。getopts命令解析命令行选项时会移除开头的单破折线，所以在case定义中不用单破折线。getopts命令有几个好用的功能。对新手来说，可以在参数值中包含空格
+```shell
+$ ./test_opt.sh -b "test1 test2" -c
+# "Found the -b option, with value test1 test2"
+# "Found the -c option"
+
+
+```
+另一个好用的功能是将选项字母和参数值放在一起使用，而不用加空格。
+```shell
+$ ./test_opt.sh -abtest1
+# Found the -a option
+# Found the -b option, with value test1
+```
+getopts还能够将命令行上找到的所有未定义的选项统一输出成问号。
+
+```shell
+$ ./test_opt.sh -d
+# Unknow option: ?
+
+$ ./test_opt.sh -abcde
+# Found the -a option
+# Found the -c option
+# Unknow option: ?
+# Unknow option: ?
+
+```
+optstring中未定义的选项字母会以问号形式发送给代码。  
+getopts命令知道何时停止处理选项，并将参数留给你处理。在getopts处理每个选项时，它会将OPTIND环境变量值增一。在getopts完成处理时，你可以使用shift命令和OPTIND值来移动参数。
+
+```shell
+
+#!/usr/bin/env bash
+
+echo
+while getopts  :ab:cd opt
+do
+  case $opt in
+      a) echo "Found the -a option";;
+      b) echo "Found the -b option, with value $OPTARG";;
+      c) echo "Found the -c option";;
+      d) echo "Found the -d option";;
+      *) echo "Unknown option: $opt";;
+  esac
+done
+
+echo "$*"
+
+echo $OPTIND
+shift $[ $OPTIND - 1 ]
+echo
+count=1
+for param in $@
+do
+  echo "The $count param is $param."
+  let count+=1
+done
+
+# output:
+#Found the -a option
+#Found the -b option, with value test1
+#Found the -c option
+#Found the -d option
+#-a -b test1 -c -d test2 test3 test4
+#6
+#
+#The 1 param is test2.
+#The 2 param is test3.
+#The 3 param is test4.
+
+```
+
+| 选项 | 描述                          |
+|:----|:------------------------------|
+| -a  | 显示所有对象                    |
+| -c  | 生产一个计数                    |
+| -d  | 指定一个目录                    |
+| -e  | 扩展一个对象                    |
+| -f  | 指定读入数据的文件               |
+| -h  | 显示命令的帮助信息               |
+| -i  | 忽略文本大小写                  |
+| -l  | 产生输出的长格式版本             |
+| -n  | 使用非交互模式（批处理）          |
+| -o  | 将所有输出重定向到的指定的输出文件 |
+| -q  | 以安静模式运行                  |
+| -r  | 递归地处理目录和文件             |
+| -s  | 以安静模式运行                  |
+| -v  | 生产详细输出                    |
+| -x  | 排除某个对象                    |
+| -y  | 对所有问题回答yes               |
