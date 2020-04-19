@@ -258,7 +258,7 @@ $ hits command
 
 ***source或者.***: source命令是bash
 shell的内置命令。点命令就是一个点符号，（从Bourne
-shell而来）是source的另外一个名称。这两个命令都已一个脚本为参数,
+shell而来）是source的另外一个名称。这两个命令都以一个脚本为参数,
 该脚本将作为当前shell的环境解释执行, 即不会启动一个新的子进程.
 所有在脚本中设置的变量将成为当前shell环境的一部分.
 同样的，当前脚本中设置的变量也将成为脚本的环境,
@@ -274,7 +274,7 @@ Note: 如果.bash_profile直接作为脚本运行, 会启动一个子shell, 这�
 #### 命令行
 
 登录后，bash
-shell默认情况下即显示主提示符，美元符号($)。而shell就是命令解释器，如果shell在交互模式下运行，它会从终端读入命令将其分隔为单词。命令行由以空格(多个空格或制表符)分隔的一个或多个单词或符号组成，并以换行符（由回车键产生）为结束标志。命令的首单词是命令，后续单词为命令参数。命令可能是像ls或date这样的Linux/UNIX可执行程序，用户自定义函数，像cd和pwd这样的内置命令，和一个shell脚本。命令可能包含成为元字符的转移字符串，在分析命令行时它们将被解释。如果命令行过长，可用反斜杠加上换行符来续行，随即显示次提示符，直到命令行结束。
+shell默认情况下即显示主提示符，美元符号($)。而shell就是命令解释器，如果shell在交互模式下运行，它会从终端读入命令将其分隔为单词。命令行由以空格(多个空格或制表符)分隔的一个或多个单词或符号组成，并以换行符（由回车键产生）为结束标志。命令的首单词是命令，后续单词为命令参数。命令可能是像ls或date这样的Linux/UNIX可执行程序，用户自定义函数，像cd和pwd这样的内置命令，和一个shell脚本。命令可能包含成为元字符的转义字符串，在分析命令行时它们将被解释。如果命令行过长，可用反斜杠加上换行符来续行，随即显示次提示符，直到命令行结束。
 ***处理命令的顺序***。命令行的首单词
 是执行命令。命令可能是一个关键字，函数，特定的内置命令或工具，可执行程序或是一个shell脚本等。根据命令类型参照下列顺序执行命令：
 1. 别名
@@ -416,13 +416,13 @@ $ enable
 #enable unset
 #enable wait
 
-$ enable -n test
+$ enable -n cd # 关闭cd命令built-in功能，使shell优先查询自定义cd函数。如果不关闭，内建命令在查询时优先级高于自定义的同名函数。
 function cd() {
     builtin cd
     echo $PWD
 }
 此时会优先执行定义的函数而不是内置的test命令.
-Note: 在定义新的函数的时候选择与操作系统相同的名字不是编程的好习惯.需要避免, 如果一个定要这么做需要将内置命令的built-in禁止.
+Note: 在定义新的函数的时候选择与操作系统相同的名字不是编程的好习惯.需要避免, 如果一定要这么做需要将内置命令的built-in禁止.
 ```
 
 ***退出状态***。当一个命令或程序退出后，都会向其父进程返回退出状态。退出状态是介于0~255的数字。一般约定，当程序退出且返回状态为0，即认为该程序成功执行。当退出状态为非零时，则意味着命令失败。如果shell没有找到命令，返回的退出状态为127，如果是致命信号导致了命令的退出，其退出状态为128加上导致其退出的信号值。
@@ -671,7 +671,7 @@ rm将重新执行匹配rm模式的最近执行的命令。 **重新执行历史�
 | !Nstring     | 将string追加到第N条命令中，并执行之                                                                                          |
 | !N:s/old/new | 替换第N条命令中第一个old字符串为new                                                                                          |
 | !N:g/old/new | 将第N条命令中所有old字符串替换为new                                                                                          |
-| ^old^new^    | 替换最近执行命令的old字符串为new                                                                                             |
+| ^old^new     | 替换最近执行命令的old字符串为new                                                                                             |
 | command!N:wn | 执行当前命令，其参数由第N条命令的参数（wn）提供。wn为由0，1，..开始的数字，这些数字表示前面命令的单词标识。单词0为命令本身，1为它的第一个参数 |
 
 ```shell
@@ -781,179 +781,7 @@ $ popd
 #移除栈顶目录，并且切换到下一个目录中
 ```
 
-#### 元字符（通配符）
 
-元字符是用于表示某些特定而非其自身含义的特殊字符，shell元字符称为通配符（wildcard）。见下表
-
-| 元字符   | 含义                            |
-|:--------|:-------------------------------|
-| \\      | 按文本含义解释后面接着的字符        |
-| &       | 在后台运行进程                   |
-| ;       | 命令分隔符                       |
-| $       | 变量替换                        |
-| ?       | 匹配一个字符                     |
-| \[abc]  | 匹配一个字符集中的一个字符，如a,b,c |
-| \[!abc] | 匹配一个字符集外的一个字符，如a,b,c |
-| *       | 匹配零或多个字符                  |
-| (cmds)  | 在子shell中执行命令              |
-| {cmds}  | 在当前shell中执行命令             |
-
-#### 文本名替换
-
-当对命令行求值时，shell用元字符来缩写与某些字符集匹配的文件名或路径名。将元字符扩展为文件名的过程也称为文件名替换或globbing。如果使用了元字符而又没有任何文件名可匹配，shell将把该元字符视为文本字符。
-
-| 元字符      | 含义                             |
-|:-----------|:---------------------------------|
-| *          | 匹配零或多个字符                   |
-| ？         | 匹配一个字符                       |
-| \[abc]     | 匹配一个字符集内的一个字符，如a,b,c   |
-| \[!abc]    | 匹配一个字符集外的一个字符，如非a,b,c |
-| {a,ile,ax} | 匹配一个字符或字符集                |
-| \[!a-z]    | 匹配从a~z范围以外的一个字符          |
-| \          | 转义或禁止元字符                   |
-| {1..10}    | 可以通过范围操作符来进行批量匹配      |
-
-Note: *是匹配文件名中零个或任意个字符的通配符
-
-```shell
-$ ls *
-# file.bak abc adg f.bak
-$ ls *.bak
-# file.bak f.bak
-$ echo a*
-# abc  adg
-$ echo c*
-# c* 因为目录下不存在c开头的文件，因此会把通配符视为文本字符打印出来
-$ ls 
-# abc abc1 abc123 abc2
-$ ls  a?c?
-# abc1 abc2
-$ echo abc???
-# abc123
-$ echo ??
-# ??  不存在两个字符的文件名，因此视为文本字符打印出来
-```
-
-**方括号** 这种括号用于匹配包含某个字符集或某个字符范围内的一个字符的文件名
-
-```shell
-$ ls
-# abc abc1 abc123 abc122 abc2 file.bak
-$ ls abc[123]
-# abc1 abc2
-$ ls abc[1-3]
-# abc1 abc2
-$ ls [a-z][a-z][a-z]
-# abc
-$ ls [!f-z]???
-# abc1 abc2
-$ ls abc12[23]
-# abc122 abc123
-
-$ ls
-# a.c b.c ac ab3 ab4 fumble faa
-$ ls f{oo,aa,umble} # 花括号中若有空格则会导致出错信息
-#  faa fumble
-$ ls a{.c,c,b[3-5]}
-# a.c ab3 ab4
-$ mkdir /tmp/{old,new,dist,bugs}
-# old new dist bugs 在/tmp目录下面创建者四个文件
-$ chown root /tmp/{usr/{ex,edit},lib/{ex?.?*,how_ex}}
-# 花括号也能嵌套使用，这里匹配的是/tmp/usr/ex, /tmp/usr/edit, /tmp/lib/ex1.cc, /tmp/lib/how_ex
-$ echo  fo{o, um}*
-# fo{o,um}* 括号里面不能有空格，如果有任何一个没有用引号括起来的空格，就不会进行括号扩展
-$ echo {mam,pap,ba}a
-# mama papa baa
-$ echo post{script,office,ure}
-# postscript postoffice posture
-```
-
-**转义字符** 要将元字符视为普通文本字符，可以用反斜杠来禁止元字符被解释扩展。
-
-```shell
-$ ls
-# abc file1 youx
-$ echo how are you?
-# how are youx
-$ echo how are  you\?
-# how are you?
-$ echo when does this line \
-> ever end\?
-# when does this line ever end? 通过添加前导反斜杠来转义换行符。
-```
-
-**波浪号和Hyphen扩展** 波浪字符被bash
-shell采纳为路径扩展字符。波浪号本身代表用户主目录的全路径名。当把波浪号加在一个用户名前，则表示该用户的全路径名。
-当波浪号后面跟着加号时，PWD(present workding
-directory,代表当前工作目录）的值将替换波浪号所代表的的目录名，波浪号所代表的的目录名将被替换为先前的工作目录。OLDPWD指的是先前的工作目录。
-
-```shell
-$ echo ~
-# /home/tony
-$ echo ~jobs
-# /home/jobs 表示jobs用户的家目录路径全名
-$ pwd 
-# /home/jobs
-$ cd /etc/
-$ echo ~+
-# 表示工作目录的全路径即/etc
-$ echo ~-
-# 表示先前工作目录的全路径/home/jobs
-$ echo $OLDPWD
-# 保存先前工作目录的值即/home/jobs
-$ cd -
-# 减号引用了先前工作目录，cd命令切换到并显示先前的工作目录
-```
-
-**控制通配符** 如果设置了bash noglob变量或者使用了带-f选项的set
-命令，称为globbing的文件名替换就会被禁止。这意味着所有元字符将表示其自身，而不再被视为通配符。这可能在使用grep，sed或awk程序搜索含元字符的模式时非常有用。如果没有设置globbing，所有元字符必须用反斜杠进行转义以关闭通配解释。
-内置shopt命令也支持控制globbing的选项.
-
-```shell
-$ set -o noglob or set -f
-
-$ print * ?? [] ~ $LOGNAME
-# * ?? [] /home/tony tony 这里因为波浪线没有用于文件名扩展，因此还是会被继续扩展解释。
-
-$ set +o noglob or set +f 
-# 继续开启文件名元字符扩展
-
-$ shopt -s dotglob
-# 开启点开头文件的匹配，默认情况下是关闭状态
-$ echo *bash*
-# 如果dotglob处于关闭状态，则会打印*bash*，如果开启了dotglob，则会文件名扩展，并且包含点开头的文件名
-# 例如.bash_profile .profile .bashrc等隐藏文件
-```
-
-**扩展文件名globbing** 沿袭了Korn
-shell的模式匹配，bash也有扩展的功能，允许正则表达式类型的语法，除非用shopt命令的extglob选项打开该功能，否则无法识别正则表达式操作符。
-shopt -s extglob
-
-扩展模式匹配表
-
-| 正则表达式          | 含义                                                                                     |
-|:------------------|:-----------------------------------------------------------------------------------------|
-| abc?(2\|1)1       | ?匹配括号里的零个或一个字符。竖线代表or条件；即2或9.匹配的是abc21.abc91或abc1                     |
-| abc*(\[0-9])      | *匹配括号里的零个或多个字符。匹配以abc开头，接着是零个或多个数字的模式。比如abc, abc1234, abc3, abc2 |
-| abc+(\[0-9])      | +匹配括号里的一个或多个字符。匹配以abc开头，接着是一个或多个数字的模式。比如abc3，abc123             |
-| no@(one\|ne)      | @匹配括号里的一项.匹配noone或none                                                            |
-| no!(thing\|where) | ！匹配除了括号里模式的所有字符串。匹配no，nobody或noone，但不匹配nothing或nowhere                 |
-
-```shell
-$ shopt -s extglob
-$ ls
-# abc abc122 f1 f3 nonsense nothing one abc1 abc2 f2 none noone nowhere
-$ ls abc?(1|2)
-# abc1 abc2 abc
-$ ls abc*([0-9])
-# abc abc1 abc122 abc2
-$ ls abc+([0-9])
-# abc1 abc2 abc3
-$ ls no@(thing|ne)
-# nothing none
-$ ls no!(thing)
-# none nonsense noone nowhere
-```
 
 ## 变量
 
@@ -1591,18 +1419,18 @@ $ unset -f welcome
 当shell启动，它继承三个文件：stdin，stdout和stderr。标准输入通常来自键盘。标准输出和标准错误通常是屏幕。但是很多时候你也许想从文件中读取输入或者把输出保存在文件中。这个时候你就可以使用I/O重新定向，见下表
 重新定向操作符表
 
-| 重新定向操作符 | 作用                                           |
-|:-------------|:----------------------------------------------|
-| <            | 重新定向输入                                    |
-| >            | 重新定向输出                                    |
-| >>           | 追加输出                                       |
-| 2>           | 重新定向错误                                    |
-| &>           | 重新定向错误和输出                               |
-| >&           | 重新定向错误和输出                               |
-| 2>&1         | 重新定向错误到标准输出                           |
-| 1>&2         | 重新定向标准输出到错误                           |
-| >\|          | 重新定向输出的时候覆盖noclobber                  |
-| <>filename   | 如果是一个设备文件，就把这个文件作为标准输入和标准输出 |
+| 重新定向操作符 | 作用                                       |
+|:-------------|:------------------------------------------|
+| <            | 重新定向输入                                |
+| >            | 重新定向输出                                |
+| >>           | 追加输出                                    |
+| 2>           | 重定向错误                                  |
+| &>           | 重定向错误和输出，使它们指向同一个数据流向       |
+| >&           | 重定向错误和输出，是它们指向同一个数据流向       |
+| 2>&1         | 重定向错误到标准输出                          |
+| 1>&2         | 重定向标准输出到标准错误                      |
+| >\|          | 重定向输出的时候覆盖noclobber                 |
+| <>filename   | 如果是一个文件，就把这个文件作为标准输入和标准输出 |
 
 ```shell
 $ tr '[A-Z]' '[a-z]' < myfile
@@ -2878,4 +2706,384 @@ do
 done    
        
 
+```
+#### I/O重定向和子shell
+文件中的输入可以通过管道重新定向给一个循环，输出也可以通过管道重新定向给一个文件。shell启动一个子shell来处理I/O重定向和管道。在循环终止的时候，循环内部定义的任何变量对于脚本的其他部分来说都是不可见的。
+示例一
+```shell
+#!/usr/bin/bash
+if let $(( $# < 1 ))
+then
+   echo "Usage: $0 filename " >&2
+   exit 1
+fi
+
+count=1
+cat $1 | while read line #将cat读取的内容作为read的标准输入
+do
+  let $(( count == 1 )) && echo "Processing file $1..." > /dev/tty #将执行结果输出到屏幕
+  echo -e "$count\t$line"
+  let $(( count += 1 )) # 老式写法，也可写作(( count += 1 )) or let count+=1
+done > temp$$ # $$为当前进程的PID，也称为父进程PID
+mv temp$$  $1 #将临时文件重新命名为原来的文件名
+exit  
+
+```
+通过管道重新定向循环的结果到一个linux命令。输出可以通过管道给另一个命令或重新定向到一个文件。
+示例一
+```shell
+#!/usr/bin/bash
+for num in 6 8 2 3 4 5
+do
+  echo $num
+done | sort -n #将循环结果通过管道传递给sort命令，然后按照数字大小顺序从小到大排列。  
+```
+**在后台运行循环**。循环可以在后台运行，程序可以不等待循环的结束而连续运行。
+示例一
+```shell
+#!/usr/bin/bash
+for name in tom larry matz
+do
+  mail $name < memo
+done & #通过&符号将循环放入后台运行
+  
+```
+#### IFS和循环
+Shell的内部域分隔符可以是空格，制表符和换行符。它可以作为命令的分隔符用在例如read，set或for等命令中。如果在列表中使用不同的分隔符，用户可以自己定义这个符号。在修改以前把IFS原始符号的值保存在另外一个变量中是一个好办法，这样可以在需要的时候恢复原来的值。
+示例一
+```shell
+#!/usr/bin/bash
+OLDIFS="$IFS" # 将原来的值赋值给一个新的变量，来作为备份。因为IFS的值是空格，因此这里需要用引号引用。
+IFS=":" # 重新定义IFS的值，使命令可以以冒号作为分隔符来处理
+names=Tom:Larry:Matz
+for name in $names
+do  
+  echo "Hi $name"
+done
+
+IFS=$OLDIFS #恢复原来的值，使其可以将空格作为分隔符
+set Jim Wall Jane
+for person in $* # 也可以用$@，在没有引号引用的时候，效果一样
+do
+  echo "Hi $person"
+done
+```
+示例二
+```shell
+#!/usr/bin/bash
+names=Tom:Larry:Matz
+for name in $names
+do
+  echo $name
+done
+# 此时的输出结果为Tom:Larry:Matz，因为默认IFS并没有设置冒号分隔符，因此循环的时候会把names的值看成整体执行输出。
+
+IFS=":"
+for name in $names
+do
+  echo $name
+done
+# 此时输出为
+# Tom
+# Larry
+# Matz
+# 切记当你需要改变默认的IFS值时，提前将它的值保存起来，以便后面再次利用它的初始值。
+  
+```
+#### 函数
+
+函数是在ATT的UNIX SYSTEM VR2版本开始引入到Bourne shell中的，并在Bourne again shell中得到强化。函数就是一个命令或者一组命令的名字。函数可以使程序模块化并提高效率，可以就在当前shell环境中执行。换言之，在执行像ls这样的可执行程序时并不产生子进程。你甚至可以把函数保存在文件中，而在准备使用时再把它们载入脚本。  
+在使用函数时需遵循以下原则：
+1. shell可以决定是执行一个别名，然后是函数，内建命令，最后才执行可执行程序。
+2. 函数在使用前必须定义。
+3. 函数在当前环境下运行。它跟调用它的脚本分享变量，并通过位置参量传递参数，通过local函数可以在函数内部建立本地变量。
+4. 如果你在函数中使用exit命令，则可以退出整个脚本。如果函数退出，就返回到脚本中调用该函数的地方。
+5. 函数中的return命令返回函数中最后一个命令的退出状态值或者给定的参数值。
+6. 使用内建命令export -f可以把函数输出给子shell。
+7. 使用内建命令declare -f可以显示定义的函数清单。如果只显示函数的名字，可以用命令declare -F。
+8. 像变量一样，函数内部陷阱(trap)是全局的。它们可以被脚本和脚本激活的函数共享。如果是一个陷阱被定义为函数，它就可以被脚本共享。但是它可能产生意想不到的效果。
+9. 如果函数保存在其他的文件中，就必须通过source或者dot命令把它们装入当前的脚本。
+10. 函数可以递归。也就是说，函数可以调用自己，而且调用的次数没有限制。
+```shell
+格式
+
+function function_name { commands; commands; } # 书写时函数体与花括号之间必须有空格
+```
+示例一
+```shell
+
+function dir { echo "Directories: "; ls -l | akw '^d' '{print $NF}'; }
+function dir () { echo "Directories: "; ls -l | akw '^d' '{print $NF}'; }
+# 函数名后面的括号某些情况下可以不加
+```
+**复位函数**：使用命令unset从内存中删除函数
+```shell
+格式
+
+unset -f function_name
+```
+**输出函数**：函数可以输出给子shell
+```shell
+格式
+
+export -f function_name
+export -n function_name #取消导出一个函数
+```
+#### 函数参数和返回值
+因为函数可以在当前shell内执行，变量对于函数和shell来说都是可见的。所以在函数内对于环境变量的任何修改都将影响shell。
+**内建的local函数**: 要创建只在函数内部使用，且当函数退出时就消失的变量，可以用内建的local函数实现。
+
+**参数**：通过为止参量可以向函数传递参数。位置参量对于函数来说是专用的。也就是说参数将不影响在函数外使用的任何位置参量。
+
+**内建的return函数**：return函数可以用来退出函数并返回到脚本中调用该函数的地方(记住，它与exit有很大的区别，exit不但退出函数，而且还会直接退出整个脚本)。如果你没有为return命令指定参数，返回的函数值就是最后一行脚本的退出状态值。如果赋值给return命令，则这个值将保存在变量?中，这个值可以是0~256之间的一个整数。因为return命令限制只能返回一个0~256之间的整数。因此你可以使用命令替换来捕捉函数的输出。把整个函数放在括号内，前面是一个$,就是$(function_name)或者就像传统的捕捉linux命令的输出一样，通过引用把输出赋值给一个变量。
+示例一
+```shell
+#!/usr/bin/bash
+function usage { echo "error: $*" 2>&1; exit 1; }
+if (( $# != 2 ))
+then
+    usage "$0: requires two arguments"
+fi 
+
+if [[ ! ( -r $1 && -w $1 ) ]]
+then
+   usage "$0: not readable and writeable"
+fi
+echo The arguments are $* # 这里的位置参数与函数内的同名位置函数互不影响，两个完全是相互独立的
+exit
+      
+```
+示例二
+```shell
+#!/usr/bin/bash
+
+increment () { 
+   local sum
+   let "sum = $1 + 1"
+   return $sum 
+}
+
+echo -n "The sum is "
+increment 5
+echo $?
+echo $sum #空值，因为是函数的local变量在函数退出时就被删除了
+
+```
+示例二
+```shell
+#!/usr/bin/bash
+function square {
+    local sq
+    let "sq = $1 * $1"
+    echo "number to be squared is $1."
+    echo "The result is $sq" # 输出内容作为返回值
+}
+echo -n "Give me a number to square: "
+read number
+value_return=$(square $number)
+echo "The square value is $value_return."
+```
+#### 函数和source（或者dot）命令
+**保存函数**：函数通常被定义在.profile中，所以当你登录时，它们就被定义了。函数可以被输出并保存在文件中。当你需要它们的时候，可以使用source命令或者dot命令和文件名来激活在这些文件中定义的函数。
+示例一
+```shell
+#!/usr/bin/bash
+#scriptname: first_one
+echo "Hello World!"
+function go {
+    echo "I want to go fishing."
+}
+
+function fishing { 
+    echo "wow, i got a fish!"
+}
+#在第一个脚本里面定义两个函数。
+
+#!/usr/bin/bash
+#scriptname：second_one
+source first_one.sh # 在第二个脚本中导入第一个脚本定义的函数。除了用source，也可以使用.号来加载文件
+go
+fishing
+# Hello world!
+# I want to go fishing.
+# wow, i got a fish!
+# 如果first_one.sh里面不光定义了函数，还执行了其他命令，那么在导入文件的时候，第一个脚本里面的命令也会被一起执行。
+
+```
+source和.操作符的作用其实与我们在修改环境配置文件以后需要重新用source来初始化一下是一样的原理和作用。当我们source .bash_profile的时候，其实就是相当于执行了文件里面的命令，因此一些定义的环境变量会被导出。
+
+#### 陷阱信号
+当你的程序运行时，按下Control-C或者Control-\, 一旦该信号到达程序就立刻终止运行。但是在很多的时候，你可能并不希望在信号到达的时候，程序就立刻停止运行。而是它能希望忽略这个信号而一直运行，或者在程序退出以前，做一些清除操作。trap命令允许你控制你的程序在收到信号以后的行为。
+信号的定义是由一个进程发送给另一个进程的，或者在特定的键按下以后由操作系统发送给进程，又或者在异常情况下发生时，由数字组成的非同步的消息。trap命令告诉shell根据收到的信号以不同的方式终止当前的进程。如果trap命令后面跟着一个用引号引用的命令，则在接收到指定数字后，就执行这个命令。shell总共读取两次命令字符串，一次是在设置trap的时候，一次是在信号达到的时候。如果命令字符串被双引号引用，在第一次trap设置时就执行变量和命令替换。如果是用的单引号引用，那么等到信号到达trap开始执行的时候，才运行变量和命令替换。
+```shell
+格式
+trap 'command; command' signal-num
+trap 'command; command' signal-name
+```
+示例一
+```shell
+trap  'rm file; exit 1' 0 1 2 15
+trap  'rm file; exit 1' EXIT HUP INT TERM
+# 两种方式都一样
+```
+如果在一个脚本运行过程中，系统接到一个前缀SIG，例如SIGHUP，SIGINT等等。bash允许你在信号上使用象征性名称。例如没有前缀或者用数字作为信号的名称。一个叫做EXIT的或者数字0的伪信号将在shell退出时，导致一个陷阱的触发执行。
+详细的信号说明见文档。常见的信号以及它们的数值代号、说明如下：
+Signal     Value     Comment
+\-------------------------------
+SIGHUP        1      终止进程，特别是终端退出时，此终端内的进程都将被终止
+SIGINT        2      中断进程，几乎等同于sigterm，会尽可能的释放执行clean-up，释放资源，保存状态等(CTRL+C)
+SIGQUIT       3      从键盘发出杀死(终止)进程的信号
+
+SIGKILL       9      强制杀死进程，该信号不可被捕捉和忽略，进程收到该信号后不会执行任何clean-up行为，所以资源不会释放，状态不会保存
+SIGTERM      15      杀死(终止)进程，几乎等同于sigint信号，会尽可能的释放执行clean-up，释放资源，保存状态等
+
+SIGSTOP      19      该信号是不可被捕捉和忽略的进程停止信息，收到信号后会进入stopped状态
+SIGTSTP      20      该信号是可被忽略的进程停止信号(CTRL+Z)
+
+**信号复位**：trap命令后面跟一个信号或者数字，可以把信号复位为默认动作。一旦调用了函数，函数设置的陷阱可以被调用这个函数的shell识别。同时，在函数外设置的陷阱也可以被函数识别。
+示例一
+```shell
+trap 2 or trap INT #为信号2设置默认动作。当按下Ctrl-C就会触发这个信号
+# 这样用法并不推荐，可能会产生副作用。
+
+trap - signal-list # 这种方法和上面这种方法效果一样，更加稳妥。
+```
+**忽略信号**：如果trap命令后面跟一对空引号，列表中的信号就会被进程所忽略。
+```shell
+trap " " 1 2
+trap " " HUP INT
+#信号1和2将被shell进行忽略
+```
+
+**陷阱列表**：通过输入trap命令，可以显示陷阱的列表和分配给陷阱的命令清单。
+
+trap的语法格式为：
+1. trap \[-lp]
+2. trap cmd-body signal_list
+3. trap '' signal_list
+4. trap    signal_list
+5. trap -  signale_list
+
+语法说明：
+语法1：-l选项用于列出当前系统支持的信号列表，和"kill -l"一样的作用。
+       -p选项用于列出当前shell环境下已经布置好的陷阱。
+语法2：当捕捉到给定的信号列表中的某个信号时，就执行此处给定cmd-body中的命令。
+语法3：命令参数为空字符串，这时shell进程和shell进程内的子进程都会忽略信号列表中的信号。
+语法4：省略命令参数，重置陷阱为启动shell时的陷阱。不建议此语法，当给定多个信号时结果会出人意料。
+语法5：等价于语法4。
+trap不接任何参数和选项时，默认为"-p"。
+
+
+```shell
+$ trap 'echo hello world' 2
+$ trap # 显示默认设置的陷阱
+# trap -- 'shell_session_update' EXIT
+# trap -- 'echo hello world ' SIGKILL
+# trap -- ' ' SIGINT
+
+```
+示例一
+```shell
+#!/usr/bin/bash
+# scriptname: trapping.sh
+trap 'echo "Control-C will not terminate $0."' INT
+trap 'echo "Control-\ will not terminate $0."' QUIT
+trap 'echo "Control-Z will not terminate $0."' TSTP
+
+echo "When you are ready to exit, please enter a \"stop.\""
+while true
+do
+  echo "go ahead --->"
+  read
+  if [[ $REPLY == [sS]top ]] # read命令如果没有指定变量，则输入内容默认保存在REPLY中
+  then
+      break
+  fi
+done  
+(The output)
+$ bash trapping.sh 
+#When you are ready to exit, please enter a "stop."
+#go ahead --->
+#w
+#go ahead --->
+#e
+#go ahead --->
+#^ZControl-Z will not terminate trapping.sh.
+#^CControl-C will not terminate trapping.sh.
+#^\Control-\ will not terminate trapping.sh.
+#^CControl-C will not terminate trapping.sh.
+#^CControl-C will not terminate trapping.sh.
+#^CControl-C will not terminate trapping.sh.
+#^CControl-C will not terminate trapping.sh.
+#^CControl-C will not terminate trapping.sh.
+#^CControl-C will not terminate trapping.sh.
+#^CControl-C will not terminate trapping.sh.
+#^CControl-C will not terminate trapping.sh.
+#stop #前面的三个信号都触发了设置的命令，打印出了内容，但是并不会终止脚本运行，直到输入stop终止循环。
+   
+```
+**复位信号**：trap命令后面以信号名字或者号码作为参数，可以复位信号为默认动作。当然也可以以trap - siglist的形式来复位信号默认行为。
+```shell
+trap 'trap - 2' 2
+# 需要按两次才能终止进程
+```
+
+**函数中的陷阱**：如果使用陷阱处理函数中的信号，一旦函数被激活，它将影响整个脚本。陷阱对于脚本来说是全局的。在下面的例子中，陷阱被设置为忽略中断ctrl-c。要终止这个脚本的循环就只能使用kill命令。它证明了在函数中使用陷阱可能出现不可预测的情况。
+```shell
+#!/usr/bin/bash
+function trapper {
+   echo "In trapper"
+   trap 'echo "Caught in a trap"' INT
+}
+
+while : #等同于true
+do
+  echo "In the main script"
+  trapper
+  echo "still in main"
+  sleep 5
+done  
+
+(The output)
+执行以上脚本以后的输出:
+
+#In the main script
+#In trapper
+#still in main
+#^CCaught in a trap
+#In the main script
+#In trapper
+#still in main
+#^CCaught in a trap
+#In the main script
+#In trapper
+#still in main
+```
+
+#### eval命令与命令行解析
+eval命令可以对命令行求值，做shell替换，并执行命令行，通常在普通命令行解析不能满足要求时使用。
+示例一
+```shell
+$ set a b c d e
+$ echo The last argument is \$$#
+$ set -x # 开启语法分析提示
+$ eval echo The last argument is \$$#
+# + eval echo The last argument is '$5'
+# ++ echo The last argument is e            # eval解析后面的参数的过程
+# The last argument is e 
+$ set +x # 关闭语法分析提示
+```
+示例二
+```shell
+#!/usr/bin/bash
+
+eval `/usr/bin/id | sed 's/[^a-z0-9=].*//'`
+if [[ ${uid:=0} != 0 ]]
+then 
+    echo $0: Only can run $0
+    exit 2 
+fi
+# 该命令会把id程序产生的输出作为sed命令输入源让sed命令进行处理。sed命令会从字符串的开始处开始查找，一个不是字母，数字和等号的符号，删除这个符号和这个符号后面的所有字符。
+# 最后得到的结果为uid=xxxx, 如果当前用户为root则为0
+# 接下来的命令判断当前用户是否为root用户，如果不是打印字符串，然后退出程序
 ```
