@@ -1,7 +1,5 @@
 # Ruby学习笔记
 
-***Author：TonyYang***
-
 ## 换行符与 \
 
 #### 如果想要将输出的字符串后面加上换行符，那么可以通过以下几种方式来达到：
@@ -221,8 +219,20 @@ p x
 常量以大写字母命名
 且一旦赋值以后就不在可以被更改，如果赋值会产生异常。
 ```
+ruby中的保留字
 
-![241a71d649e6a558822d1991caa5d56b.png](evernotecid://69BB663E-820F-44E3-A5F8-778DC1D85277/appyinxiangcom/27571330/ENResource/p52)
+| __LINE__ | __ENCODING__ | __FILE__ | BEGIN    |
+|:---------|:-------------|:---------|:---------|
+| END      | alias        | and      | begin    |
+| break    | case         | def      | defined? |
+| do       | else         | elsif    | end      |
+| ensure   | false        | for      | while    |
+| if       | in           | module   | next     |
+| nil      | not          | or       | redo     |
+| rescue   | retry        | return   | self     |
+| super    | then         | true     | undef    |
+| unless   | until        | when     | while    |
+| yield    |              |          |          |
 
 
 #### 以上这张表格是ruby里面的保留字，所谓保留字就是提前定义在ruby里面的，因此我们在命名变量的时候不能以这些保留字来命名，会产生冲突. ####
@@ -638,7 +648,7 @@ p str.instance_of?(Array)  #=>false
 * 在不影响原有功能的前提下追加新功能
 * 重新定义原有功能， 使名称相同的方法产生不同的效果
 * 在已有功能的基础上追加处理，扩展已有功能
-  ![371dc3a8c833053286ec95b1efa383cb.png](evernotecid://69BB663E-820F-44E3-A5F8-778DC1D85277/appyinxiangcom/27571330/ENResource/p53)
+
 
 ```ruby
 BasicObject类是Ruby中所有类的父类，它定义了作为Ruby对象的最基本功能。备注BasicObject类是最最基础的类，甚至连一般对象需要的功能都没有定义。因此普通对象所需要的类一般都被定义为Object类。字符串、数组等都是Object类的子类。
