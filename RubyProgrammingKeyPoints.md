@@ -165,3 +165,224 @@ puts(sum(1, 2))    #=> 3
 puts(1, sum(1, 2)) #=> 1
                        3
 ```
+#### method parameters
+ruby中的方法参数有以下几种定义方式：
+1. 默认参数， 默认参数在定义的时候，不允许将一个传统参数定义在两个默认参数的中间。当有多个默认参数时，给方法指定参数的时候，参数是从左往右开始分配的。
+2. 带*前缀的参数表示参数的数量可以是任意个，当传入多个参数时，会将这些参数转换为一个数组。带\*的参数不能定义在两个默认参数之间，也不能定义在默认参数的前面，但是可以定义在传统参数的前面
+3. 当一个函数的返回值为数组，且这个函数的返回值作为另一个函数的参数，则可以在这个函数的前面加一个\*号，来展开数组，以便作为另一个函数的参数。
+
+示例
+```ruby
+
+def first(a, b)
+   return a + b
+end
+
+def second(a, b)
+   return a, b
+end
+p first(*second(1, 2))
+如果second前面不加*号，则会提示参数错误，加了*可以正常执行。
+```
+在ruby里面，enumerator也是可以splatter的对象，因此我们也可以这么做
+```ruby
+
+def max(first, *rest)
+   return first > rest.max ? first : rest.max
+end
+p max(*"hello world".each_char)
+"hello world".each_char返回的是一个enumerator对象，在它前面加上\*然后作为参数传给max方法，则它就被展开为一个数组交由max方法处理。
+```
+在早期的版本中，带*号的参数通常必须放在传统参数和默认参数的后面，但是现在的版本，它们之间的顺序可以变换，但是某些情况下还是会报错
+```ruby
+def foo2(*a, b = 10, c) 
+   p [a, b, c]
+end
+
+foo2(1, 2, 3,4,5, 6 ,7) # 会报错
+
+def foo3(b = 10, a, *c) 
+   p [a, b, c]
+end
+
+foo3(1, 2, 3, 4, 5) # 会报错
+
+def foo4(a, *b, c)
+   p [a, b, c]
+end
+
+foo4(1, 2, 3, 4)
+
+def foo5(a = 10, *b, c)
+   p [a, b, c]
+end
+
+foo5(1, 2, 3, 4)
+```
+#### 用hash命名参数
+```ruby
+def sequences(args)
+   a = args[:a] || 0
+   b = args[:b] || 1
+   c = args[:c] || 0
+   ar = []
+   a.times { |i|  ar << b * i + c}
+   return ar
+end
+
+p sequences a: 10, b: 20, c: 30
+p sequences({:a => 10, :b => 20, :c => 30})
+p sequences(:a => 10, :b => 20, :c => 30)
+ruby对于以上三种写法都支持，对于不加花括号的hash，称之为bare hash
+```
+#### block参数
+
+```ruby
+def sequences2(n, m ,c)
+   ar = Array.new
+   i = 0
+   while i < n
+      ar << yield(m, i, c)
+      i += 1
+   end
+   return ar
+end
+
+
+value = sequences2(10, 20, 30) do |a, b, c|
+   a * b + c
+end
+p value
+
+def sequences3(n, m, c, &block)
+   ar = []
+   i = 0
+   while i < n
+      ar << block.call(n, m ,c)
+      n += 1
+   end
+   return ar
+end
+
+value2 = sequences3(10, 20, 30) do |a, b, c|
+   a * b + c
+end
+p value2
+
+```
+#### 使用&来调用方法
+```ruby
+a, b = [1, 2, 3], [1, 2, 3]
+sum = a.inject { |total, var| total + var }
+p b.inject(sum) { |total, var| total + var }
+
+c, d = [1, 2, 3], [1, 2, 3]
+sum = Proc.new { |total, vars| total + vars }
+vs = c.inject(&sum)
+p d.inject(vs, &sum)
+```
+调用方法的时候使用&，需要注意这个参数必须放在最后的位置，并且这个&通常放在一个proc object前面。
+在Ruby 1.9中，Symbol类定义了to_proc方法，允许将符号以＆前缀并传递给迭代器。当这样传递符号时，假定它是方法的名称。 to_proc方法返回的proc对象调用其第一个参数的命名方法，并将其余的参数传递给该命名方法。规范的情况是这样的：给定一个字符串数组，创建一个这些字符串的新数组，转换为大写。 Symbol.to_proc使我们可以优雅地完成此操作，如下所示：
+在方法调用的时候使用&放在Proc对象的前面，其实就等同于普通的带块方法的调用形式。在使用&的形式作为参数调用方法时，方法本身在定义的时候必须用&block的形式定义一个块参数，否则代码会报错。
+
+示例一
+```ruby
+words = %w{hello world matz}
+p words.map(&:upcase) #=> words.map { |str| str.upcase }
+
+
+objs = Proc.new { |a| a + 2 }
+
+def first(a)
+   yield(a)
+end
+
+p first(1, &objs) # 如果方法内定义了yield，则方法也能正常运行
+```
+示例二：我们可以自己模拟一个map函数
+```ruby
+
+def my_map(a, &block)
+   ary = []
+   p block.class
+   a.each do |var|
+      ary << block.call(var)
+   end
+   return ary
+end
+
+ar = ["hello", "world", "matz"]
+p my_map(ar, &:upcase)
+
+
+```
+#### Procs and lambdas
+当我们以一个块参数定义方法的时候，是可以直接让方法返回一个proc对象的
+```ruby
+def makeproc(&p)
+   p   # return Proc object
+end
+
+proc_object = makeproc { |x| x * x }
+以这种方式创建的Proc object都是proc而不是lambda，所有Proc 对象都有call方法
+```
+创建Proc对象的三种方法
+1. Proc.new
+```ruby
+def invoke(&p)
+   p.call          
+end
+
+def invoke
+  Proc.new.call
+end 
+```
+
+2. Kernel里面有一个lambda方法，用来创建Proc对象，但是这个Proc对象是lambda，而不是proc。
+在ruby 1.8里面有一个kernel.proc方法来创建lambda，但是在1.9版本被修复了，因此kernel.proc会返回一个proc而不再是lambda。
+3. ->(x){ x * x }
+第三种方法是lambda的另一种创建方式，小括号里面的是参数，而花括号里面的是代码块。在声明块变量的时候可以声明本地块变量，以防止被作用域内的同名变量覆盖。
+在声明时，可以用分号来分隔，分号前面的为块变量，分号后面的为本地块变量。块变量可以使用默认参数的形式。
+```ruby
+->(x) { x + 8 }
+->(x, y = 10) { x + y }
+->(x, y; a, b, c) { ... } #声明本地块变量，这种情况下括号不能省略
+->x, y, z { x + y + z } # 如果没有声明本地块变量，那么括号可以省略
+->{ ... } #如果没有参数，则可以省略括号
+def compose(f, g)
+   ->(a){ f.call(g.call(a)) }
+end
+back= compose(->(a){ a + 1 }, ->(a){ a * a })
+```
+
+```ruby
+
+def test_lambda
+   yield
+end
+
+test_lambda &->{puts "hello"}
+test_lambda { puts "hello" }
+test_lambda &Proc.new{ puts "hello"}
+
+def tsl(a, &b)
+   p b.call(a)
+end
+
+objs = Proc.new { |a| a + 2 }
+tsl(1, &objs)
+```
+#### lambda和proc的调用形式
+```ruby
+
+def foo(a, &block)
+   block.call(a)
+end
+
+Proc里面定义了call方法来调用块对象，块对象不能像正常方法调用那样被调用。除了以call来调用外，ruby还加了另外几种方式来调用
+
+block[a]
+block.(a)
+
+.()这种形式的操作符无法被重新定义，它只是call方法的语法糖，但凡是定义了call方法的对象都能以这种形式来调用，不局限于Proc对象
+```
