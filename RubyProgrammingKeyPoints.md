@@ -1046,3 +1046,244 @@ Cloud::TWO = 220
 p Cloud::ONE
 p Cloud::TWO
 ```
+#### 类变量
+类变量是全局的，它在定义它的类中都是全局可见的，任意不同的对象都能访问类变量。
+```ruby
+class Kobe
+   @@count = 0
+   attr_accessor :x, :y
+   def initialize(x, y)
+      @x = x
+      @y = y
+
+      @@count += 1
+
+   end
+
+   def self.get_class_var
+      @@count
+   end
+end
+
+one = Kobe.new(1, 2)
+two = Kobe.new(2,3)
+three = Kobe.new(1, 2)
+p Kobe.get_class_var  #=> 3，创建了三个对象
+```
+#### 类实例变量
+类是对象，可以像其他对象一样具有实例变量。类的实例变量（通常称为类实例变量）与类变量不同。但是它们足够相似，因此通常可以代替类变量来使用它们。在类定义内但在实例方法定义外使用的实例变量是类实例变量。与类变量一样，类实例变量与类关联，而不是与类的任何特定实例关联。类实例变量的一个缺点是它们不能像类变量那样在实例方法中使用。另一个缺点是可能将它们与普通实例变量混淆。没有独特的标点符号前缀，可能更难记住变量是与实例还是与类对象相关联.类实例变量相对于类变量的最重要优点之一是，在对现有类进行子类化时，类变量的行为令人困惑。
+因为类实例变量是类对象的实例变量，因此我们也可以为它定义存取器，可以通过以下方式来定义。
+```ruby
+class DoubleVar
+   @n = 0
+   @total_one = 0
+   @total_two = 0
+
+   def initialize(x, y) # 该方法是实例方法，因此无法在里面使用类实例变量
+      @x, @y = x, y
+   end
+
+   def self.new(x, y)
+      @n += 1
+      @total_one += x
+      @total_two += y
+      super
+   end
+
+   def self.report
+      puts "Number of objects created: #@n"
+      puts "Average X coordinate: #{@total_one.to_f/@n}"
+      puts "Average Y coordinate: #{@total_two.to_f/@n}"
+   end
+
+   class << self  # 为类对象定义存取器
+      attr_accessor :n, :total_one, :total_two
+   end
+end
+obj = DoubleVar.new(1, 2)
+obj2 = DoubleVar.new(2, 3)
+DoubleVar.report
+DoubleVar.report
+
+output:
+Number of objects created: 2
+Average X coordinate: 1.5
+Average Y coordinate: 2.5
+```
+#### Method Visibility：protected， private， public
+实例方法可以有三种状态，分别是protected，private和public，默认情况下，实例方法是public方法，除非明确声明了关键字。有一个例外就是initialize方法是隐示私有方法。另一个例外是在类定义之外声明的任何“全局”方法，这些方法被定义为Object的private实例方法。可以从任何地方调用public方法，使用它没有限制。
+1. private：方法是类的内部实现，它只能由该类的其他实例方法（或我们将在后面看到的其子类）调用。私有方法是在self上隐式调用的，而不能在对象上显式调用。如果m是私有方法，则必须以函数风格将其调用为m。您不能写o.m甚至self.m。
+2. protected：受保护的方法就像私有方法一样，因为只能从类或其子类的实现中调用它。它与私有方法的不同之处在于，它可以在类的任何实例上显式调用，并且不限于对self的隐式调用。例如，可以使用一种受保护的方法来定义一个访问器，该访问器允许一个类的实例彼此共享内部状态，但不允许该类的用户访问该状态。受保护的方法是最不常用的定义，也是最难理解的方法。关于何时可以调用protected方法的规则可以描述如下：由类C定义的protected方法可以由对象p中的方法在对象o上被调用，当且仅当o和p的类都是C类的子类，或等于C类的子类。
+方法可见性使用名为public，private和protected的三种方法声明。这些是Module类的实例方法。self指被定义的类。因此，公共的，私有的和受保护的可以像语言的关键字一样被裸露使用。但是，实际上，它们是对self的方法调用。有两种方法可以调用这些方法。不带参数的情况下，它们指定所有后续的方法定义都将具有指定的可见性。一个类可能会这样使用它们：
+```ruby
+第一种方式
+class Foo
+   # public method goes here
+
+   private
+   # private method goes here
+
+   protected
+
+   # protected method goes here
+end
+```
+也可以使用一个或多个方法的名称来调用方法。参数可以是符号或者字符串形式。像这样调用时，它们会更改命名方法的可见性。在这种用法中，可见性声明必须位于方法定义之后。一种方法是在类结束时立即声明所有私有和受保护的方法。另一种方法是在定义每个私有或受保护方法后立即声明其可见性。例如，这里是带有私有实用程序方法和受保护的访问器方法的类：
+```ruby
+第二种方式
+class  Widget
+
+   def x
+      @x
+   end
+
+   private :x
+
+   def utility_method
+      nil
+   end
+
+   protected :utility_method
+end
+
+
+第三种方式
+class  Widget
+
+   def x
+      @x
+   end
+   
+   def utility_method
+      nil
+   end
+
+   private :x
+   protected :utility_method
+end
+```
+请记住，public，private和protected仅适用于Ruby中的方法。实例变量和类变量被封装并有效地私有，常量实际上是公开的。没有办法使实例变量可以从类外部访问（当然，除了定义访问器方法外）。而且没有办法定义外部无法访问的常量。
+有时，指定一个private类方法是很有用的。例如，如果你的类定义了工厂方法，则可能需要将new方法设为私有。为此，请使用private_class_method方法，将一个或多个方法名称指定为符号：
+```ruby
+private_class_method :new
+```
+你可以使用public_class_method将private类方法再次公开。不能在没有参数的情况下调用这两种方法，而public，protected和private的方式在没有参数的情况下是能够依然被调用的。
+从设计上来说，Ruby是一种非常开放的语言。指定某些方法是私有的和受保护的功能可以鼓励良好的编程风格，并防止无意中使用了不属于类的公共API的方法。但是，重要的是要了解，Ruby的元编程功能使调用private和protected方法甚至访问封装的实例变量变得很简单。调用之前代码中定义的private实例方法，我们可以使用send方法，也可以使用instance_eval方在对象的上下文中评估块：
+```ruby
+obj = Widget.new
+obj.send :utility_method               # 运行私有方法，与第二种方式等价
+obj.instance_eval { utility_method }   # 运行私有方法
+obj.instance_eval { @x }               # 读取实例变量值
+```
+如果你想按名称调用方法，但又不想无意中调用您不知道的私有方法，则可以（在Ruby 1.9中）使用public_send而不是send。它的工作方式类似于send，但是在使用receiver调用时不会调用私有方法。
+
+#### 子类化和继承
+包括Ruby在内的大多数面向对象的编程语言都提供了一种子类化机制，该机制使我们能够创建其行为基于但已存在的类修改而来的新类。我们将从基本术语的定义开始讨论子类。如果您使用Java，C ++或类似语言进行编程，则您可能已经熟悉这些术语。当我们定义一个类时，我们可以指定它扩展或继承自另一个类，称为超类。如果定义扩展了Gem类的Ruby类，则说Ruby是Gem的子类，而Gem是Ruby的超类。如果在定义类时未指定超类，则该类将隐式扩展Object。一个类可以具有任意数量的子类，并且每个类都有一个唯一的超类，但Object除外。
+类可能具有多个子类，但只有一个超类，这意味着它们可以以树结构排列，我们称其为Ruby类层次结构。 Object类是此层次结构的根，每个类都直接或间接继承自该类。类的后代是该类的子类，再加上子类的子类，依此类推。类的祖先是超类，再加上超类的超类，依此类推直至Object。
+在Ruby 1.9中，Object不再是类层次结构的根。一个名为BasicObject的新类可满足此目的，而Object是BasicObject的子类。 BasicObject是一个非常简单的类，几乎没有自己的方法，它可用作委派包装器类的超类。
+在Ruby 1.9中创建类时，除非显式指定了超类，否则仍会扩展Object，并且大多数程序员将永远不需要使用或扩展BasicObject。诸如==，等于eql？，instance_eval和__send__之类的方法通常被视为Object方法，即使它们实际上是由BasicObject定义的。
+在本章的前面，我们了解了如何使用Struct.new自动生成简单的类。也可以对基于Struct的类进行子类化，以便可以添加除自动生成的方法以外的方法：
+扩展类的语法很简单。只需在类声明中添加<字符和超类的名称。例如：
+```ruby
+class Point3D < Point ＃定义Point3D类为Point的子类
+
+end
+```
+```ruby
+class Point3D < Struct.new('Point3D', :x, :y, :z)
+   # superclass struct gives us accessor methods, ==, to_s, etc.
+   # add point-specific methods here
+end
+```
+#### overriding method
+定义新类时，我们通过定义新方法向其添加新行为。同样重要的是，我们可以通过重新定义继承的方法来自定义类的继承行为。
+关于面向对象的编程和子类化要理解的重要事情之一是，在调用方法时，将动态地查找它们，以便找到方法的适当定义或重新定义。也就是说，方法调用在解析时不是静态绑定的，而是在执行时查找的。
+如果你以前进行过面向对象的编程，则该程序的行为可能很明显而且很琐碎。但是，如果你不熟悉它，那可能会难以理解。我们称从WorldGreeter继承的greet方法。此greet方法调用Greeting方法。在定义问候语时，greeting方法返回“ Hello”。但是，我们将WorldGreeter子类化，而我们调用greet的对象具有greet的新定义。当我们调用greet时，Ruby为被调用的对象查找该方法的适当定义，最后得到一个适当的西班牙语问候语而不是英语问候语。这种对方法的适当定义的运行时查找称为方法名称解析.
+注意，定义一个抽象类来调用某些未定义的“抽象”方法也是完全合理的，这些方法留给子类来定义。抽象的反面是具体的。如果扩展抽象类的类定义了其祖先的所有抽象方法，则它是具体的。
+```ruby
+class WorldGreeter
+   def greet
+      puts "#{greeting} #{who}"
+   end
+
+   def greeting
+      "Hello"
+   end
+
+   def who
+      "World"
+   end
+end
+
+class SpanishWorldGreeter < WorldGreeter
+   def greet
+      "Hola"
+   end
+end
+```
+定义一个抽象类
+```ruby
+class AbstractGreeter
+   def greet
+      puts "#{greeting} #{who}"
+   end
+end
+
+class WorldGreeter < AbstractGreeter
+   def greeting
+      "Hello"
+   end
+
+   def who
+      "World"
+   end
+end
+
+WorldGreeter.new.greet
+```
+#### 覆盖私有方法
+私有方法不能从定义它们的类外部调用。但是它们是由子类继承的。这意味着子类可以调用它们并可以覆盖它们。子类化不是自己编写的类时，一定得当心。类通常使用私有方法作为内部帮助器方法。它们不是该类的公共API的一部分，因此不希望看到。如果你还没有阅读该类的源代码，那么你甚至都不知道其定义供自己使用的私有方法的名称。如果您碰巧在子类中定义了一个与父类中的私有方法同名的方法（无论其可见性），那么你将无意中覆盖了父类的内部实用程序方法，这几乎肯定会导致意外的行为。
+结论是，在Ruby中，仅当你熟悉超类的实现时才应子类化。如果只想依赖类的公共API而不是类的实现，则应该通过封装来扩展该类的功能并且委派给该类，而不是从该类继承。
+#### 通过链来扩展行为
+有时，当我们重写某个方法时，我们不想完全替换它，而只是想通过添加一些新代码来增强其行为。为此，我们需要一种从重写方法中调用重写方法的方法。这称为链接，它是通​​过关键字super完成的。
+super的工作方式类似于特殊的方法调用：它在当前类的超类中调用与当前名称相同的方法。 （请注意，超类不必自己定义该方法，它可以从其祖先之一继承该方法。）你可以像为普通方法调用一样为super指定参数。方法链接的一个常见且重要的地方是类的initialize方法。
+```ruby
+class Car
+   def initialize(x, y)
+      @x, @y = x, y
+   end
+end
+
+class Audi < Car
+   def initialize(x, y, z)
+      super(x, y)  # 通过继承父类的initialize方法来定义实例变量，因为定义@x,@y的代码是一样的，这样我们只需要定义额外的一个实例变量就行，这样就通过父类的方法扩展了我们的方法，而不需要完全重写。
+      @z = z
+   end
+end
+
+p Audi.new(1, 2, 3)
+```
+如果你将super用作裸露的关键字-没有参数且没有括号-那么所有传递给当前方法的参数会传递给超类方法，但是注意，传递给超类方法的是当前方法参数的当前值。如果该方法已修改其参数变量中的值，则将修改后的值传递给超类方法的调用。
+```ruby
+class Car
+   def initialize(x, y)
+      @x, @y = x, y
+   end
+end
+
+class Audi < Car
+   def initialize(x, y, z)
+      x = 1 + x # 修改参数变量的值
+      y = 2 + y # 修改参数变量的值
+      super(x, y) # 将修改后的参数变量的值传递给父类方法
+      @z = z
+   end
+end
+
+p Audi.new(1, 2, 3)
+```
+与常规方法调用一样，super参数周围的括号是可选的。但是，由于裸super具有特殊含义，如果要从本身具有一个或多个参数的方法中传递零参数，则必须显式使用一对空括号。
+#### 继承类方法
+类方法可以像实例方法一样被继承和覆盖。假设有Point和Point3D两个父子类，如果我们的Point类定义了一个类方法sum，则我们的Point3D子类将继承该方法。也就是说，如果Point3D没有定义自己的名为sum的类方法，则表达式Point3D.sum调用与表达式Point.sum相同的方法。
+从风格上讲，最好通过定义了类方法的类对象来调用类方法。看到表达式Point3D.sum的代码维护人员会去Point3D类中寻找sum方法的定义，他可能很难在Point类中找到它。在使用显式接收器调用类方法时，应避免依赖继承-始终通过定义它的类来调用类方法。
+在类方法的主体内，你可以在没有显式receiver的情况下调用该类的其他类方法-它们是在self上隐式调用的，并且class方法中self的值就是它所在的类的名字。在类方法的内部，类方法的继承很有用：即使你通过超类定义了类方法，它也允许你隐式调用类方法。最后，请注意，类方法可以使用超级类，就像实例方法可以调用超类中的同名方法一样。
