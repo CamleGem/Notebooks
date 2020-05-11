@@ -907,7 +907,7 @@ Foo3 = Foo2.new
 p Foo3.class.to_s #=> Foo3
 p Foo3.superclass.to_s #=> Foo2 # Foo2的子类
 ```
-结构还定义了数组和哈希式索引风格的 \[] 和 \[ ]= 运算符，甚至提供了each和each_pair迭代器提供循环访问，以循环遍历Struct类的实例中的值。
+Struct还定义了数组和哈希式索引风格的 \[] 和 \[ ]= 运算符，甚至提供了each和each_pair迭代器提供循环访问，以循环遍历Struct类的实例中的值。
 ```ruby
 Foo = Struct.new(:x, :y)
 p Struct.superclass
@@ -1112,7 +1112,7 @@ Average Y coordinate: 2.5
 ```
 #### Method Visibility：protected， private， public
 实例方法可以有三种状态，分别是protected，private和public，默认情况下，实例方法是public方法，除非明确声明了关键字。有一个例外就是initialize方法是隐示私有方法。另一个例外是在类定义之外声明的任何“全局”方法，这些方法被定义为Object的private实例方法。可以从任何地方调用public方法，使用它没有限制。
-1. private：方法是类的内部实现，它只能由该类的其他实例方法（或我们将在后面看到的其子类）调用。私有方法是在self上隐式调用的，而不能在对象上显式调用。如果m是私有方法，则必须以函数风格将其调用为m。您不能写o.m甚至self.m。
+1. private：方法是类的内部实现，它只能由该类的其他实例方法（或我们将在后面看到的其子类）调用。私有方法是在self上隐式调用的，而不能在对象上显式调用。如果m是私有方法，则必须以函数风格将其调用为m。你不能写o.m甚至self.m。
 2. protected：受保护的方法就像私有方法一样，因为只能从类或其子类的实现中调用它。它与私有方法的不同之处在于，它可以在类的任何实例上显式调用，并且不限于对self的隐式调用。例如，可以使用一种受保护的方法来定义一个访问器，该访问器允许一个类的实例彼此共享内部状态，但不允许该类的用户访问该状态。受保护的方法是最不常用的定义，也是最难理解的方法。关于何时可以调用protected方法的规则可以描述如下：由类C定义的protected方法可以由对象p中的方法在对象o上被调用，当且仅当o和p的类都是C类的子类，或等于C类的子类。
 方法可见性使用名为public，private和protected的三种方法声明。这些是Module类的实例方法。self指被定义的类。因此，公共的，私有的和受保护的可以像语言的关键字一样被裸露使用。但是，实际上，它们是对self的方法调用。有两种方法可以调用这些方法。不带参数的情况下，它们指定所有后续的方法定义都将具有指定的可见性。一个类可能会这样使用它们：
 ```ruby
@@ -1171,7 +1171,7 @@ private_class_method :new
 从设计上来说，Ruby是一种非常开放的语言。指定某些方法是私有的和受保护的功能可以鼓励良好的编程风格，并防止无意中使用了不属于类的公共API的方法。但是，重要的是要了解，Ruby的元编程功能使调用private和protected方法甚至访问封装的实例变量变得很简单。调用之前代码中定义的private实例方法，我们可以使用send方法，也可以使用instance_eval方在对象的上下文中评估块：
 ```ruby
 obj = Widget.new
-obj.send :utility_method               # 运行私有方法，与第二种方式等价
+obj.send :utility_method               # 运行私有方法，与第三种种方式等价
 obj.instance_eval { utility_method }   # 运行私有方法
 obj.instance_eval { @x }               # 读取实例变量值
 ```
@@ -1341,3 +1341,579 @@ end
 常量与方法之间的重要区别在于，在继承层次结构中查找常量之前，先在常量使用的词法范围内对其进行查找。这意味着，如果TestConstTwo继承使用常量ORIGIN的方法，则当子类定义其自己的ORIGIN版本时，这些继承的方法的行为将不会改变。
 
 #### 对象的创建和初始化
+##### new, allocate, and initialize
+每个类都继承new类方法。此方法有两个任务：必须分配一个新对象实际上使该对象存在,并且必须初始化该对象。它将这两个任务分别委派给allocate和initialize方法。如果新方法实际上是用Ruby编写的，则它将类似于以下内容：
+```ruby
+
+def new(*arg)
+   o = self.allocate  # 创建一个对象
+   o.initialize(*arg) # 初始化一个对象
+   return o           # 返回一个初始化后的对象
+end
+```
+allocate是Class的实例方法，它被所有class对象继承。其目的是创建该类的新实例。你可以自己调用此方法来创建类的未初始化实例。但不要尝试覆盖它; Ruby总是直接调用此方法，而忽略用户可能定义的任何替代版本。
+initialize是一个实例方法。大多数类都需要一个，并且扩展除Object以外的其他类都应使用super链接到超类的initialize方法。 initialize方法通常的任务是为对象创建实例变量，并为其设置初始化值。通常，这些实例变量的值是从客户端代码传递给new的参数，它们被传递给new方法，然后传递给initialize方法得出的。 initialize不需要返回初始化的对象。实际上，initialize的返回值被忽略。 Ruby隐式地将initialize方法设为私有，这意味着你无法在对象上显式调用它。
+**Note: 类定义了两个名为new的方法。一个是Class＃new，是一个实例方法，另一个是Class\:\:new，是一个类方法。第一个是我们在这里描述的实例方法。它被所有类对象继承，成为该类的类方法，并用于创建和初始化新实例。类方法Class::new是该类类自己的方法版本，可用于创建新类。**
+##### Factory method
+允许以多种方式初始化类的实例通常很有用。你通常可以通过在initialize方法上提供参数默认值来做到这一点。例如，使用定义如下的initialize方法，可以使用两个或三个参数调用new：
+```ruby
+class Foo
+   def initialize(x, y, z = nil)
+      @x, @y, @z = x, y, z
+   end
+end
+```
+但是，有时参数默认值还不够，我们需要编写除new以外的工厂方法来创建类的实例。假设我们希望能够使用多种方式来初始化一个实例：
+```ruby
+class Foo
+   def initialize(x, y, z = nil)
+      @x, @y, @z = x, y, z
+   end
+
+   private_class_method :new
+   def self.first(x, y)
+      new(x, y)
+   end
+
+   def self.second
+      new(10, 20)
+   end
+end
+```
+##### dup, clone, and initialize_copy
+新对象存在的另一种方式是调用dup和clone方法来获取。这些方法会为调用它们的对象的类分配一个新的实例。然后，它们将接收者对象的所有实例变量和污点复制到新分配的对象中。clone比dup更进一步地进行复制,它还复制接收者对象的单例方法，如果原始对象被冻结，则冻结复制对象。
+如果一个类定义了一个名为initialize_copy的方法，则clone和dup在从原始对象复制实例变量之后，将在复制的对象上调用该方法。克隆会在冻结复制对象之前调用initialize_copy，因此，initialize_copy仍然可以对其进行修改。）initialize_copy方法将原始对象作为参数传递，并且可以对复制的对象进行所需的任何更改。但是，它不能创建自己的副本对象。initialize_copy的返回值将被忽略。像initialize一样，Ruby确保initialize_copy始终是私有的。
+当clone和dup将实例变量从原始对象复制到副本时，它们将引用复制到这些变量的值。他们不复制实际值。换句话说，这些方法执行浅复制。这就是许多类可能想要更改这些方法的行为的原因之一。下面的代码定义了initialize_copy方法以对内部状态进行更深层次的复制：
+```ruby
+class Foo
+   def initialize(*args)
+      @x = args
+   end
+
+   def initialize_copy(org)
+      @x = @x.dup
+   end
+end
+```
+此处显示的类将其内部状态存储在数组中。没有initialize_copy方法，如果使用克隆或dup复制对象，则复制的对象将引用与原始对象相同的状态数组。对副本执行的更改会影响原件的状态。由于这不是我们想要的行为，因此我们必须定义initialize_copy来创建数组的副本。
+
+```ruby
+class Foo
+   attr_accessor :x
+   def initialize(*args)
+      @x = args
+   end
+
+   def set_arg(x)
+      self.x.push(x)
+   end
+
+   def get_arg
+      x
+   end
+
+   def initialize_copy(org)
+      @x = @x.dup
+   end
+end
+
+obj = Foo.new(1, 2, 3)
+obj2 = obj.dup
+obj.set_arg(10)
+print obj.get_arg # [1, 2, 3, 10]
+
+print obj2.get_arg # [1, 2, 3]
+```
+如果不定义initialize_copy方法，则改变原始对象的数据也会改变复制的对象的数据。
+某些类（例如定义枚举类型的类）可能想要严格限制存在的实例数。诸如此类的类需要将其new方法设为私有，并且可能还希望防止复制。以下代码演示了一种实现方法：
+```ruby
+class Season
+   NAMES = %w{ Sprint Summer Autumn Winter }
+   INSTANCES = []
+
+   def initialize(n)
+      @n = n
+   end
+
+   def to_s
+      NAMES[@n]
+   end
+
+   NAMES.each_with_index do |name, index|
+      instance = new(index)
+      INSTANCES[index] = instance
+      const_set name, instance
+   end
+
+   private_class_method :new, :allocate
+   private :dup, :clone
+end
+```
+这段代码涉及一些元编程技术，代码的重点是最后一行，使dup和clone方法变为私有。
+防止对象复制的另一种技术是使用undef来简单地删除clone和dup方法。另一种方法是重新定义clone和dup方法，以使它们引发异常，并显示一条错误消息，明确指出不允许复制。这样的错误消息可能对正在使用你的类的程序员有所帮助。
+##### marshal_dump and marshal_load
+创建对象的第三种方式是，调用Marshal.load来重新创建以前使用Marshal.dump编组（或“序列化”）的对象。Marshal.dump保存对象的类，并递归排列其每个实例变量的值。这些方法效果很好，可以使用这两种方法保存和还原大多数对象。
+一些类需要更改排列的方式。原因之一是提供了更紧凑的方式来表示对象的状态。另一个原因是避免保存易失性数据，例如在解组对象时只需要清除的缓存内容。你可以通过在类中定义marshal_dump实例方法来定制处理对象的方式。它应返回另一个对象（例如字符串或所选实例变量值的数组），以代替接收器对象进行排列处理。
+当然，如果定义自定义的marshal_dump方法，则必须定义匹配的marshal_load方法。 marshal_load将在该类的新分配（但已分配）但未初始化的实例上调用。它将传递由marshal_dump返回的对象的重构副本，并且它必须根据传递对象的状态来初始化接收器对象的状态。
+通常，我们可以通过将整数打包到字符串中来减少封送处理对象的大小，从而减少一些字节。
+如果你正在编写一个类（例如前面显示的Season类），但是你已经为其禁用了clone和dup方法，则你还需要实现自定义的封送处理方法，因为转储和加载对象是创建对象副本的简便方法。你可以通过定义引发异常的marshal_dump和marshal_load方法来完全防止封送处理，但是这样做很繁琐。一个更优雅的解决方案是自定义解编组，以便Marshal.load返回现有对象，而不是创建副本。
+为此，我们必须定义一对不同的自定义封送处理方法，因为marshal_load的返回值将被忽略。 _dump是一个实例方法，必须以字符串形式返回对象的状态。匹配的_load方法是一个类方法，它接受_dump返回的字符串并返回一个对象。允许_load创建新对象或返回对现有对象的引用。
+为了允许对Season对象进行封送处理，但防止复制，我们将以下方法添加到类中：
+```ruby
+class Season
+   NAMES = %w{ Sprint Summer Autumn Winter }
+   INSTANCES = []
+
+   def initialize(n)
+      @n = n
+   end
+
+   def to_s
+      NAMES[@n]
+   end
+
+   NAMES.each_with_index do |name, index|
+      instance = new(index)
+      INSTANCES[index] = instance
+      const_set name, instance
+   end
+
+   def _dump(limit)
+      @n.to_s
+   end
+
+   def self._load(s)
+      INSTANCES[Integer(s)]
+   end
+
+   private_class_method :new, :allocate
+   private :dup, :clone
+end
+```
+##### The Singleton Pattern
+单例是只有一个实例的类。单例可以用于在面向对象的框架中存储全局程序状态，并且可以作为类方法和类变量的有用替代方法。
+正确实现单例需要前面展示的许多技巧。必须将new方法和allocate方法设为私有，必须防止dup和clone复制，等等。幸运的是，我们可以使用标准库中的Singleton模块；只需require “Singleton”，然后将Singleton纳入你的class即可。这定义了一个名为instance的类方法，该方法不带任何参数并返回该类的单个实例。定义一个initialize方法来执行该类的单个实例的初始化。但是请注意，任何参数都不会传递给此方法。
+```ruby
+class PointStats
+   include Singleton
+
+   def initialize
+      @n, @totalX, @totalY = 0, 0.0, 0.0
+   end
+
+   def record(point)
+      @n += 1
+      @totalX += point.x
+      @totalY += point.y
+   end
+
+   def report
+      puts "Number of points created: #@n"
+      puts "Average X coordinate: #{@totalX/@n}"
+      puts "Average Y coordinate: #{@totalY/@n}"
+   end
+end
+```
+有了这样的类，我们可以像这样为Point类编写initialize方法：
+```ruby
+class Point
+   def initialize(x, y)
+      @x, @y = x, y
+      PointStats.instance.record(self)
+   end
+end
+```
+
+Singleton模块会自动为我们创建instance类方法，然后在该Singleton实例上调用常规实例方法记录。类似地，当我们要查询点统计信息时，我们编写：
+```ruby
+PointStats.instance.report
+```
+##### Module
+像类一样，模块是一组命名的方法，常量和类变量。模块的定义很像类,但是使用module关键字代替了class关键字。与类不同，模块不能被实例化，也不能被子类化。模块独立存在；没有继承的“模块层次结构”。
+模块用作名称空间和mix-in。
+正如类对象是Class类的实例一样，模块对象也是Module类的实例。类是Module的子类。这意味着所有类都是模块，但并非所有模块都是类。就像模块一样，类可以用作名称空间。但是，类不能用作mixins。
+当不需要面向对象的编程时，模块是对相关方法进行分组的好方法。例如，假设你正在编写使用Base64编码在文本之间对二进制数据进行编码和解码的方法。不需要特殊的编码器和解码器对象，因此这里没有理由定义一个类。我们需要的是两种方法：一种进行编码，一种进行解码。我们可以只定义两个全局方法：
+def base64_encode
+
+end
+
+def base64_decode
+
+end
+
+为了防止名称空间与其他编码和解码方法冲突，我们为方法指定了base64前缀。此解决方案有效，但是大多数程序员都希望避免在可能的情况下向全局名称空间添加方法。因此，更好的解决方案是在Base64模块中定义两个方法：
+```ruby
+module Base64
+   def self.encode
+      
+   end
+   
+   def self.decode
+      
+   end
+end
+```
+注意，我们用一个self定义我们的方法。前缀，这使它们成为模块的“类方法”。我们还可以显式重用模块名称并定义如下方法：
+```ruby
+   def Base64.encode
+
+   end
+
+   def Base64.decode
+
+   end
+end
+```
+用这种方法定义方法更具重复性，但是更紧密地反映了这些方法的调用语法：
+```ruby
+p Base64.encode
+p Base64.decode
+```
+请注意，模块名称必须与类名称一样以大写字母开头。定义模块会创建一个与模块同名的常量。该常数的值是代表模块的Module对象。模块也可以包含常量。
+在Base64模块之外，此常量可以称为Base64 :: DIGITS。在模块内部，我们的编码和解码方法可以通过其简单名称DIGITS来引用它。如果这两种方法需要共享非恒定数据，则可以使用类变量（带有@@前缀），就像在类中定义它们一样。
+```ruby
+module Base64
+   VAR = 100
+   @@kobe = 10
+   def self.encode
+      @@kobe = 20
+   end
+
+   def self.decode
+      @@kobe = 30
+   end
+
+   def self.get
+      @@kobe
+   end
+
+   def self.get_var
+      VAR
+   end
+end
+p Base64::VAR
+p Base64.get_var
+
+Base64.encode
+p Base64.get
+
+Base64.decode
+p Base64.get
+```
+##### 嵌套的命名空间
+包括类在内的模块可以嵌套。这将创建嵌套的名称空间，但没有其他作用：嵌套在另一个中的类或模块对嵌套在其中的类或模块没有特殊的访问权限。为了继续我们的Base64示例，假设我们想定义用于编码和解码的特殊类。由于Encoder和Decoder类仍然彼此相关，因此我们将它们嵌套在模块中：
+```ruby
+module Base64
+   DIGITS = 100
+
+   class Encoder
+      def encode
+         puts "I am encode"
+      end
+
+      def greet
+         Base64.utility_helper
+      end
+   end
+
+   class Decoder
+      def decode
+         puts "I am decode"
+      end
+
+      def greet
+         Base64.utility_helper
+      end
+   end
+
+   def Base64.utility_helper
+      puts "Do u want to have a help!"
+   end
+end
+
+Base64::Encoder.new.encode
+Base64::Decoder.new.decode
+Base64::Decoder.new.greet
+Base64::Encoder.new.greet
+```
+通过以这种方式构造代码，我们定义了两个新类，即Base64::Encoder和Base64::Decoder。在Base64模块内部，这两个类可以通过不带Base64前缀的非限定名称相互引用。每个类都可以使用没有前缀的DIGITS常量。
+另一方面，请考虑Base64.helper实用程序功能。嵌套的Encoder和Decoder类没有对包含模块的方法的特殊访问，它们必须使用其完全限定的名称Base64.helper来引用此帮助器方法。
+因为类是模块，所以它们也可以嵌套。将一个类嵌套在另一个类中只会影响内部类的名称空间。它不会为该类提供对外部类的方法或变量的任何特殊访问。如果类的实现需要帮助程序类，代理类或其他不属于公共API的其他类，则您可能需要考虑将内部类嵌套在使用它的类中。这样可以使命名空间保持整洁，但实际上不会以任何方式将嵌套类设为私有。
+##### Moudle作为mix-in
+第二种使用模块的方式比第一种使用更强大。如果模块定义实例方法而不是类方法，则可以将这些实例方法混入其他类中。 Enumerable和Comparable是mixin模块的知名示例。 Enumerable定义了有用的迭代器，这些迭代器是根据每个迭代器实现的。 Enumerable并没有定义每个方法本身，但是任何定义它的类都可以在Enumerable模块中混合使用，以立即添加许多有用的迭代器。可比类似；它根据通用比较器<=>定义比较运算符。如果您的班级定义了<=>，则可以在Comparable中混合使用<，<=，==>，> =，以及between？。
+要将模块混入类中，请使用include。通常将include当作语言关键字使用：
+```ruby
+class Foo
+   include Base64
+end
+```
+
+实际上，它是Module的私有实例方法，它是在self上隐式调用的，self是包含模块的类。在方法形式中，此代码为：
+```ruby
+class Foo
+   include(Base64)
+end
+```
+因为include是私有方法，所以必须将其作为函数调用，并且我们无法编写self.include（Comparable）。include方法接受任意数量的Module对象进行混合，因此定义each和<=>的类可能包含以下行：
+include Comparable, Enumerable
+是否包含模块会影响类型检查方法is_a？和开关相等运算符===。例如，字符串混合在Comparable模块中，而在Ruby1.8中也混合在Enumerable模块中：
+```ruby
+class Foo
+   include Comparable, Enumerable
+end
+
+p Foo.new.is_a? Comparable # true
+p Foo.new.is_a? Enumerable # true
+```
+注意instance_of？仅检查其接收者的类，而不检查超类或模块，因此以下内容为假：
+```ruby
+p Foo.new.instance_of? Comparable # false
+p Foo.new.instance_of? Enumerable # false
+```
+尽管每个类都是一个模块，但是include方法不允许将一个类包含在另一个类中。要包含的参数必须是使用模块声明的模块，而不是类。但是，将一个模块包含到另一个模块中是合法的。这样做仅会使包含模块的实例方法成为包含模块的实例方法。
+```ruby
+module Iterable
+   include Enumerable
+   def each
+      loop { yield self.next }
+   end
+end
+```
+混入模块的通常方法是使用Module.include方法。另一种方法是使用Object.extend。此方法使指定模块或多个模块的实例方法成为接收器对象的单例方法.（并且如果接收方对象是Class实例，那么接收方的方法将成为该类的类方法。）下面是一个示例：
+```ruby
+ountdown = Object.new
+def countdown.each
+   yield 3
+   yield 2
+   yield 1
+end
+
+countdown.extend(Enumerable)
+p countdown.sort
+countdown.each {|var| p var}
+```
+##### Includable Namespace Modules
+可以定义定义命名空间的模块，但仍然允许混合使用它们的方法。Math模块的工作方式如下：
+```ruby
+Math.sin(0) # Math is a namespace
+include Math # The Math namespace can be included
+p sin(0) # 可以直接访问sin方法
+```
+kernel模块也这样工作：我们可以通过kernel名称空间调用它的方法，也可以作为对象的私有方法来调用它。
+如果要创建像Math或Kernel这样的模块，请将你的方法定义为该模块的实例方法。然后使用module_function将这些方法转换为“模块函数”。 module_function是Module的私有实例方法，非常类似于public，protected和private方法。它接受任意数量的方法名称（作为符号或字符串）作为参数。调用module_function的主要作用是它可以复制指定方法的类方法。第二个效果是，它将实例方法设为私有（稍后我们将对此进行更多说明）。
+与public，protected和private方法一样，module_function方法也可以不带任何参数调用。当以这种方式调用时，模块中随后定义的任何实例方法都将是模块函数：它们将成为公共类方法和私有实例方法。一旦调用了不带参数的module_function，它对于其余的模块定义仍然有效。因此，如果要定义不是模块函数的方法，请先定义那些方法。
+```ruby
+module Dog
+   def name
+      'lucky'
+   end
+
+   def color
+      'red'
+   end
+
+   module_function :color, :name
+end
+
+class TestM
+   include Dog
+end
+
+p TestM.new.name # 错误 name为私有方法
+p TestM.new.color # 错误 color为私有方法
+p Dog.name  # 公共类方法
+p Dog.color # 公共类方法
+```
+起初，module_function将模块的实例方法设为私有似乎让人感到惊讶。这样做的原因并非真正用于访问控制，因为显然这些方法也可以通过模块的名称空间公开获得。而是将这些方法设为私有，以将它们限制为函数样式的调用，而无需显式的接收者。 （之所以将它们称为模块函数而不是模块方法，是因为它们必须以函数样式调用。）强制在没有接收方的情况下调用包含的模块函数，这样就不太可能将它们误认为是真正的实例方法。假设我们正在定义一个其方法执行许多三角函数的类。为了我们自己的方便，我们包括Math模块。然后，我们可以将sin方法作为函数调用，而不是调用Math.sin。 sin方法是对self隐式调用的，但是我们实际上并不希望它对self起作用。
+定义模块函数时，应避免使用self，因为self的值取决于调用它的方式。当然可以定义一个模块函数，其行为取决于调用方式。但是，如果要这样做，那么简单定义一个类方法和一个实例方法就更有意义了。
+```ruby
+module Dog
+   def name
+      'lucky'
+   end
+
+   module_function
+   def color
+      'red'
+   end
+
+
+end
+
+class TestM
+   include Dog
+
+   def greet
+      puts "This is a #{color} dog"
+   end
+end
+
+p TestM.new.name
+TestM.new.greet
+```
+#### 加载和请求一个模块
+Ruby程序可以分解为多个文件，对程序进行分区的最自然的方法是将每个重要的类或模块放入单独的文件中。然后可以使用require或load将这些单独的文件重新组合为一个程序（如果设计合理，则可以被其他程序重用）。这些是在Kernel中定义的全局函数，但与语言关键字一样使用。相同的require方法也用于从标准库加载文件。
+load和require用于类似目的，尽管require比load更常用。
+这两个函数都可以加载和执行指定的Ruby源代码文件。如果要加载的文件是用绝对路径指定的，或者是相对于〜(用户的主目录)的，则将加载该特定文件。但是，通常，该文件被指定为相对路径，并相对于Ruby的加载路径目录进行加载并要求对其进行搜索(加载路径的详细信息如下所示)。
+Ruby 1.9还定义了require_relative方法。它的工作原理与require相同，除了它忽略加载路径并搜索相对于加载调用代码的目录的命名文件。
+尽管它们总体上相似，但是load和require之间存在重要的区别：
+* 除了加载源代码之外，require还可以加载对Ruby的二进制扩展。二进制扩展名当然取决于实现，但是在基于C的实现中，二进制扩展名通常采用共享库文件的形式，扩展名为.so或.dll
+* load需要包含扩展名的完整文件名。通常会为require传递一个没有扩展名的库名，而不是文件名。在这种情况下，它将搜索以库名称为其基本名称以及适当的源或本地库扩展名的文件。如果目录同时包含.rb源文件和二进制扩展名文件，则require将加载源文件而不是二进制文件。
+* load可以多次加载同一文件。require尝试阻止相同的文件被多次加载。(但是，如果你使用两个不同但等效的路径指向同一个库文件，require可能会被愚弄。在Ruby 1.9中，require将相对路径扩展为绝对路径，这使它变得有些愚蠢)。require跟踪通过将它们附加到全局数组也称为$"($LOADED_FEATURES)来加载的文件。load并不会这么做。
+* load以当前$SAFE级别加载指定的文件。 require加载指定库会将$SAFE设置为0，即使被require调用的代码对该变量具有更高的值。(请注意，如果$SAFE设置为大于0的值，则require将拒绝加载带有污染文件名或外部世界可写目录的文件。因此，从理论上讲，对于require来说，加载降低了$SAFE级别的文件应该是安全的)。
+
+#### 加载路径
+Ruby的加载路径是一个数组，你可以使用全局变量$LOAD_PATH或$:进行访问。(此全局符号的助记符是冒号用作类Unix操作系统上的路径分隔符。)数组的每个元素都是Ruby将搜索要加载的文件的目录的名称。在数组末尾的目录之前先搜索数组开头的目录。在Ruby 1.8中，$LOAD_PATH的元素必须是字符串，但是在Ruby 1.9中，它们可以是字符串，也可以是任何具有返回字符串的to_path方法的对象。
+$LOAD_PATH的默认值取决于Ruby的实现，它所运行的操作系统，甚至是在文件系统中的安装位置。Ruby 1.9中的一个较小的加载路径更改是在vendor_ruby之后和标准库之前搜索了vendor_ruby目录。这些旨在用于由操作系统供应商提供的自定义。
+RubyGems内置在Ruby 1.9中：gem命令随Ruby一起分发，可用于安装新软件包，其安装目录会自动添加到默认加载路径。在Ruby 1.8中，必须单独安装RubyGems（尽管Ruby 1.8的某些发行版可能会自动捆绑它），并且gem安装目录绝不会添加到加载路径中。相反，Ruby 1.8程序需要rubygems模块。这样做会用新版本替换默认的require方法，该新版本可以在哪里查找已安装的gem。
+你可以使用Ruby解释器的–I命令行选项将新目录添加到Ruby搜索路径的开头。使用多个–I选项可以指定多个目录，或者使用单个–I并使用冒号（或Windows中的分号）将多个目录彼此分开。 Ruby程序还可以通过更改$ LOAD_PATH数组的内容来修改自己的加载路径。这里有些例子：
+```ruby
+
+# Remove the current directory from the load path
+$:.pop if $:.last == '.'  
+
+# Add the installation directory for the current program to 
+# the beginning of the load path instead of using require_relative.
+
+$LOAD_PATH.unshift File.expand_path($PROGRAM_NAME)
+
+# Add the value of an environment variable to the end of the path
+$LOAD_PATH << ENV['MY_LIBRARY_DIRECTORY']
+
+
+```
+最后，请记住，可以通过传递绝对文件名(以/或〜开头)来完全跳过加载路径，以进行load或require。
+#### 执行被加载的代码
+load和require立即执行指定文件中的代码。但是，调用这些方法并不等同于简单地用文件包含的代码替换对load或require的调用。
+加载了load或require的文件在新的顶级作用域内执行，该作用域不同于调用load或require的作用域。加载的文件可以看到在加载时已定义的所有全局变量和常量，但是它无权访问启动加载的本地作用域。其含义包括以下内容：
+* 在调用require或load的作用域内定义的局部变量对加载的文件不可见。
+* 加载完成后，将丢弃由加载文件创建的任何局部变量；它们在定义它们的文件之外永远不可见。
+* 在加载文件的开头，self的值始终是main对象，就像Ruby解释器开始运行时一样。也就是说，在方法调用内调用load或require不会将接收器对象传播到加载的文件。
+* 在加载的文件中，当前模块嵌套将被忽略。例如，你不能打开一个类，然后加载一个方法定义文件。该文件将在顶级范围内处理，而不是在任何类或模块内处理。
+#### 被包裹的加载
+load方法具有我们以前未描述的不常用功能。如果使用非nil或false以外的第二个参数调用，则它将包装指定的文件并将其加载到匿名模块中。这意味着加载的文件不能影响全局名称空间。它定义的任何常量（包括类和模块）都被捕获在匿名模块中。你可以将包装的加载用作安全预防措施(或最小化由名称空间冲突引起的错误的方法)。我们将在安全性中看到，当Ruby在沙盒中运行不受信任的代码时，该代码将无法调用require，并且只能将load用于包装的负载。
+当文件加载到匿名模块中时，它仍然可以设置全局变量，并且它所设置的变量对于加载该文件的代码是可见的。假设你编写了一个文件util.rb，该文件是定义了有用的实用程序方法的Util模块。如果你希望即使包装了文件也可以访问这些方法，则可以在文件末尾添加以下行：
+$Util = Util   # 将这个模块的引用存储进一个全局变量
+现在，将util.rb加载到匿名名称空间中的代码可以通过全局$Util而不是常量Util访问实用程序功能。
+在Ruby 1.8中，甚至可以将匿名模块本身传递回正在加载代码。
+
+```ruby
+if Module.nesting.size > 0       
+  $wrapper = Module.nesting[0]   
+end
+```
+#### 自动加载模块
+内核和模块的autoload方法允许根据需要延迟加载文件。全局autoload函数允许你注册未定义常量的名称(通常是类或模块的名称)以及定义该常量的库的名称。首次引用该常量时，将使用require加载命名库。例如：
+Module类定义了自己的autoload版本，以与嵌套在另一个模块中的常量一起使用。使用autoload?还是Module.autoload?测试对常量的引用是否会导致文件被加载。该方法需要一个符号参数。如果在引用由符号命名的常量时将加载文件，那么autoload?返回文件名。否则(如果未请求自动加载，或者如果文件已经加载)autoload?返回nil。
+#### 单实例方法与Eigenclass
+我们在之前了解到可以定义单例方法，仅针对单个对象而不是一个类的多个对象定义的方法。要在对象Point上定义单例方法sum，我们将编写：
+```ruby
+def Foo.sum
+   #
+end
+
+
+```
+如前面所述，类的类方法只不过是表示该类的Class实例上的单例方法。
+对象的单例方法不是由该对象的类定义的。但是它们是方法，必须与某种类关联。对象的单例方法是与该对象关联的匿名本征类的实例方法。 “本征”是德语单词，大约（大致）表示“自我”，“拥有”，“特定于”或“特征”。本征类也称为单例类或（较不常见）元类。 Ruby社区并未统一接受“本征类”一词，但这是我们在本书中将要使用的术语。
+Ruby定义了一种语法，用于打开对象的本征类并向其添加方法。这为定义单例方法提供了一种选择。我们可以改为定义任意数量的特征类实例方法。要打开对象o的本征类，请使用类<< o。例如，我们可以这样定义Foo的类方法：
+```ruby
+class << Foo
+   def class_method1
+   ...
+   end
+   
+   def class_method2
+   ...
+   end
+end
+```
+如果在类本身的定义内打开类对象的本征类，则可以使用self而不是重复类的名称。重复前面的示例：
+```ruby
+class Foo
+   class << self 
+      def class_method1
+         ###
+      end
+      
+      def class_method2
+         ###
+      end
+   end
+   
+end
+```
+请谨慎使用语法。请注意，以下三行之间存在很大差异：
+```ruby
+class Point            # 创建或打开一个类
+class Point3D < Point  # 创建Point的子类
+class << Point         # 打开Point对象的Eigenclass
+
+```
+通常，将类方法定义为单独的单例方法而无需显式打开本征类会更清楚。当您打开对象的本征类时，self指代本征类对象。因此，获取对象o的本征类的惯用法是：
+```ruby
+eigenclass = class << Foo ; self; end
+p eigenclass #<Class:Foo>
+```
+我们可以将其形式化为Object的方法，以便我们可以请求任何对象的特征类：
+```ruby
+class Object
+   def eigenclass
+      class << self; self; end
+   end
+end
+```
+除非你使用Ruby进行复杂的元编程，否则你不太可能真的需要像下面显示的那样一个本征类实用程序函数。但是，值得了解特征类，因为您偶尔会看到它们在现有代码中使用，并且因为它们是Ruby方法名称解析算法的重要组成部分，我们将在下面进行介绍。
+#### 方法查询
+Ruby在评估方法调用表达式时，必须首先确定要调用的方法。执行此操作的过程称为方法查找或方法名称解析。对于方法调用表达式o.m，Ruby通过以下步骤执行名称解析：
+1. 首先，它检查o的特征类以查找名为m的单例方法。
+2. 如果在本征类中未找到方法m，则Ruby在o类中搜索名为m的实例方法。
+3. 如果在类中未找到方法m，则Ruby会搜索o类所包含的任何模块的实例方法。如果该类包含多个模块，则以与包含它们的顺序相反的顺序搜索它们。即，首先搜索最近包含的模块。
+4. 如果在o的类或其模块中未找到实例方法m，则搜索将继承层次结构上移至超类。对继承层次结构中的每个类重复步骤2和3，直到已搜索每个祖先类及其包含的模块。
+5. 如果完成搜索后未找到名为m的方法，则将调用名为method_missing的方法。为了找到此方法的适当定义，名称解析算法将从步骤1重新开始。内核模块提供method_missing的默认实现，因此可以保证第二遍名称解析成功。在处理未定义的方法中将更详细地介绍method_missing方法。
+让我们考虑该算法的具体示例。假设我们有以下代码：
+```ruby
+message = "hello"
+message.world
+
+```
+1. 检查特征类中的单例方法。在这种情况下没有任何东西。
+2. 检查String类。没有名为world的实例方法。
+3. 检查String类的Comparable和Enumerable模块中是否有一个名为world的实例方法。两个模块均未定义这种方法。
+4. 检查String的超类，即Object。 Object类也没有定义名为world的方法。
+5. 检查对象包含的内核模块。在这里也找不到world方法，因此我们现在切换到寻找一个名为method_missing的方法。
+6. 在上面的每个位置（String对象的特征类，String类，Comparable和Enumerable模块，Object类以及Kernel模块）中查找method_missing。我们发现的method_missing的第一个定义是在Kernel模块中，因此这是我们调用的方法。它的作用是引发异常：NoMethodError："hello"的未定义方法"world":String
+这似乎要求Ruby在每次调用方法时都进行详尽的搜索。但是，在典型的实现中，成功的方法查找将被缓存，以使后续的相同名称（无中间方法定义）的查找将非常快。
+#### 类方法查询
+类方法的名称解析算法与实例方法的名称解析算法完全相同，但是有一个不同之处。让我们从一个简单的案例开始，没有任何曲折。这是一个C类，它没有定义自己的类方法
+```ruby
+class C
+
+end
+```
+请记住，在定义了这样的类之后，常量C引用的对象是Class的实例。我们定义的任何类方法都只是对象C的单例方法。
+定义了类C之后，我们很可能会编写涉及类方法new的方法调用表达式：c = C.new
+为了解析new方法，Ruby首先在对象C的特征类中寻找单例方法。我们的类没有任何类方法，因此在此找不到任何方法。搜索本征类之后，名称解析算法将搜索C的类对象。C的类为Class，因此Ruby接下来在Class中查找方法，并在其中找到一个名为new的实例方法。
+你没看错。类方法C.new的方法名称解析算法最终找到了实例方法Class.new。实例方法和类方法之间的区别对于得出面向对象的编程范例非常有用，但是事实是，在Ruby中（类由对象表示），这种区别有些人为。每个方法调用，无论是实例方法还是类方法，都有一个接收者对象和一个方法名称。名称解析算法为该对象找到合适的方法定义。我们的对象C是Class类的实例，因此我们当然可以通过C调用Class的实例方法。此外，Class继承了Module，Object和Kernel的实例方法，因此这些继承的方法也可用作C的方法。我们称之为“类方法”的唯一原因是我们的对象C恰好是一个类。
+我们的类方法C.new被发现为Class的实例方法。但是，如果在该处找不到它，则名称解析算法将继续执行，就像实例方法一样。在搜索Class失败之后，我们将查看模块（Class不包含任何模块），然后查看超类Module。接下来，我们将搜索Module（没有模块）的模块，最后是Module，Object及其模块Kernel的超类。
+类方法与实例方法一样被继承。让我们定义一个类方法Integer.parse作为示例：
+```ruby
+def Integer.parse(text)
+   text.to_i
+end
+
+Fixnum.parse("1")
+```
+根据我们之前看到的方法名称解析算法的描述，我们知道Ruby首先会在Fixnum的特征类中搜索单例方法。接下来，它将搜索类，模块，对象和内核的实例方法。那么它在哪里找到解析方法呢？ Integer的类方法只是Integer对象的单例方法，这意味着它是由Integer的本征类定义的。那么，该Integer的本征类如何参与名称解析算法？
+考虑到这一点，我们现在可以更全面地解释方法名称解析算法，并说当Ruby在对象的本征类中搜索单例方法时，它也会同时搜索本征类的超类(和所有祖先)。因此，在查找Fixnum的类方法时，Ruby首先检查Fixnum，Integer，Numeric和Object的单例方法，然后检查Class，Module，Object和Kernel的实例方法。
+#### 常量查询
+Ruby首先尝试在引用的词法范围内解析常量引用。这意味着它首先检查包围常量引用的类或模块，以查看该类或模块是否定义了常量。如果不是，它将检查下一个封闭的类或模块。一直持续到没有更多的封闭类或模块为止。请注意，顶级或全局常量不被视为词法范围的一部分，并且在常量查找的这一部分中也未被考虑。类方法Module.nesting以搜索顺序返回在此步骤中搜索的类和模块的列表。
+如果在词法范围内未找到常量定义，则Ruby接下来将通过检查引用该常量的类或模块的祖先来尝试解析继承层次结构中的常量。包含的类或模块的ancestors方法返回在此步骤中搜索的类和模块的列表。
+如果在继承层次结构中未找到常量定义，则检查顶级常量定义。
+如果找不到所需常量的定义，则将调用const_missing方法（如果存在）中的包含类或模块，并有机会为常量提供一个值。
+关于此常量查找算法，有几点需要更详细地说明：
+* 封闭模块中定义的常量优先于包含模块中定义的常量。
+* 在该类的超类之前搜索该类包含的模块。
+* Object类是所有类的继承层次结构的一部分。在任何类或模块之外定义的顶级常量类似于顶级方法：它们在Object中隐式定义。因此，当从类内引用顶级常量时，将在搜索继承层次结构时对其进行解析。但是，如果在模块定义中引用了常量，则在搜索模块的祖先后需要对Object进行显式检查。
+* 内核模块是Object的祖先。这意味着在内核中定义的常量的行为类似于顶级常量，但是可以被Object中定义的真正的顶级常量覆盖。
+
