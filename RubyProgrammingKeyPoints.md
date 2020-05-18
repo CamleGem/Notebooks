@@ -1570,7 +1570,7 @@ p Base64.encode
 p Base64.decode
 ```
 请注意，模块名称必须与类名称一样以大写字母开头。定义模块会创建一个与模块同名的常量。该常数的值是代表模块的Module对象。模块也可以包含常量。
-在Base64模块之外，此常量可以称为Base64 :: DIGITS。在模块内部，我们的编码和解码方法可以通过其简单名称DIGITS来引用它。如果这两种方法需要共享非恒定数据，则可以使用类变量（带有@@前缀），就像在类中定义它们一样。
+在Base64模块之外，此常量可以称为Base64::DIGITS。在模块内部，我们的编码和解码方法可以通过其简单名称DIGITS来引用它。如果这两种方法需要共享非恒定数据，则可以使用类变量（带有@@前缀），就像在类中定义它们一样。
 ```ruby
 module Base64
    VAR = 100
@@ -1724,7 +1724,7 @@ p TestM.new.color # 错误 color为私有方法
 p Dog.name  # 公共类方法
 p Dog.color # 公共类方法
 ```
-起初，module_function将模块的实例方法设为私有似乎让人感到惊讶。这样做的原因并非真正用于访问控制，因为显然这些方法也可以通过模块的名称空间公开获得。而是将这些方法设为私有，以将它们限制为函数样式的调用，而无需显式的接收者。 （之所以将它们称为模块函数而不是模块方法，是因为它们必须以函数样式调用。）强制在没有接收方的情况下调用包含的模块函数，这样就不太可能将它们误认为是真正的实例方法。假设我们正在定义一个其方法执行许多三角函数的类。为了我们自己的方便，我们包括Math模块。然后，我们可以将sin方法作为函数调用，而不是调用Math.sin。 sin方法是对self隐式调用的，但是我们实际上并不希望它对self起作用。
+起初，module_function将模块的实例方法设为私有似乎让人感到惊讶。这样做的原因并非真正用于访问控制，因为显然这些方法也可以通过模块的名称空间公开获得。而是将这些方法设为私有，以将它们限制为函数样式的调用，而无需显式的接收者。(之所以将它们称为模块函数而不是模块方法，是因为它们必须以函数样式调用。)强制在没有接收方的情况下调用包含的模块函数，这样就不太可能将它们误认为是真正的实例方法。假设我们正在定义一个其方法执行许多三角函数的类。为了我们自己的方便，我们包括Math模块。然后，我们可以将sin方法作为函数调用，而不是调用Math.sin。 sin方法是对self隐式调用的，但是我们实际上并不希望它对self起作用。
 定义模块函数时，应避免使用self，因为self的值取决于调用它的方式。当然可以定义一个模块函数，其行为取决于调用方式。但是，如果要这样做，那么简单定义一个类方法和一个实例方法就更有意义了。
 ```ruby
 module Dog
@@ -1917,3 +1917,332 @@ Ruby首先尝试在引用的词法范围内解析常量引用。这意味着它�
 * Object类是所有类的继承层次结构的一部分。在任何类或模块之外定义的顶级常量类似于顶级方法：它们在Object中隐式定义。因此，当从类内引用顶级常量时，将在搜索继承层次结构时对其进行解析。但是，如果在模块定义中引用了常量，则在搜索模块的祖先后需要对Object进行显式检查。
 * 内核模块是Object的祖先。这意味着在内核中定义的常量的行为类似于顶级常量，但是可以被Object中定义的真正的顶级常量覆盖。
 
+#### 反射和元编程
+我们已经看到Ruby是一种动态语言。你可以在运行时将新方法插入类，为现有方法创建别名，甚至在单个对象上定义方法。此外，它还具有丰富的API用于反射。反射，也称为自省，仅表示程序可以检查其状态和结构。例如，Ruby程序可以获取Hash类定义的方法的列表，查询指定对象中命名实例变量的值，或者遍历解释器当前定义的所有Regexp对象。反射API实际上更进一步，并允许程序更改其状态和结构。 Ruby程序可以动态设置命名变量，调用命名方法，甚至定义新的类和新的方法。
+Ruby的反射API（加上其一般的动态特性，其块和迭代器的控制结构以及其括号可选的语法）使其成为元编程的理想语言。定义松散的元编程是在编写可帮助您编写程序的程序（或框架）。换句话说，元编程是用于以简化编程的方式扩展Ruby语法的一组技术。元编程与编写特定领域语言或DSL的想法紧密相关。 Ruby中的DSL通常使用方法调用和块，就好像它们是该语言的特定于任务的扩展中的关键字一样。
+请记住，反射本身并不是元编程。元编程通常以某种方式扩展Ruby的语法或行为，并且经常涉及不止一种反射。
+#### 类型，类和模块
+最常用的反射方法是用于确定对象类型的那些方法以及它响应什么方法。
+```ruby
+
+obj = Array.new
+p obj.class               # 对象所属的类
+p Array.superclass        # 对象的父类
+p obj.instance_of? Array  # 对象属于哪个类
+p obj.is_a? Array         # 是否属于数组类
+p obj.kind_of? Array      # 与上面是同义词
+p Array === obj           # 对象是否属于Array类
+p obj.respond_to?'[]'     # 对象是否有该方法
+p Array.private_methods   # 数组的私有方法
+p obj.respond_to? 'initialize', true  # 加上true表示检查私有方法
+
+module M
+
+end
+
+class A
+   include M
+end
+
+class B < A; end
+
+class C < B; end
+
+b = B.new
+b.is_a? A #=> true
+b.is_a? B #=> true
+b.is_a? C #=> false
+b.is_a? M #=> true 模块也属于父类，因为类B继承了A，而A mix-in了模块M
+```
+#### 祖先和模块
+除了你已经看到的这些方法之外，还有几种相关的反射方法可用于确定类或模块的祖先，以及确定类或模块包括哪些模块。这些方法在演示时很容易理解：
+```ruby
+module AA; end
+module BB; include AA; end
+class C; include BB; end
+
+p C < BB  # true
+p C < AA  # true
+p BB < AA # true
+
+p Fixnum < Integer     # true
+p Integer < Comparable # true
+p Integer < Fixnum     # false
+p String < Numeric     # nil 字符串不是数字
+
+p AA.ancestors
+p BB.ancestors
+p C.ancestors
+p String.ancestors
+
+
+p AA.included_modules
+p BB.included_modules
+p C.included_modules
+
+p C.include? BB  #true
+p C.include? AA  #true
+p AA.include? BB #false
+p AA.include? AA # false
+```
+这段代码演示了include ?，这是Module类定义的公共实例方法。但是它还具有两次调用include方法（不带问号）的功能，这是Module的私有实例方法。作为私有方法，它只能在self上隐式调用，这将其用法限制为类或模块定义的主体。这种方法的使用就好像它是关键字一样，是Ruby核心语法中的元编程示例。
+与private include方法有关的方法是public Object.extend。该方法通过使每个指定模块的实例方法成为对象的单例方法来扩展对象：
+```ruby
+module Greeter; def hi; "hello"; end; end
+str = "string object"
+str.extend(Greeter)
+p str.hi                # 为单个对象添加实例方法 
+String.extend(Greeter)  # 为类添加类方法
+p String.hi
+```
+类方法Module.nesting与模块的包含或祖先无关。而是返回一个数组，该数组指定当前位置的模块嵌套。 Module.nesting\[0\]是当前类或模块，Module.nesting\[1\]是包含的类或模块，依此类推：
+```ruby
+module Kobe
+   class Test
+      p Module.nesting # [Kobe::Test, Kobe]
+   end
+   p Module.nesting # Kobe
+end
+```
+#### 定义类和模块
+类和模块是类和模块类的实例。这样，您可以动态创建它们：
+```ruby
+MM = Module.new # 创建一个模块
+CC = Class.new  # 创建一个类
+DD = Class.new(CC) do
+   include MM
+end
+
+p DD.include? MM 
+p DD.ancestors
+```
+Ruby的一个不错的功能是，当将动态创建的匿名模块或类分配给常量时，该常量的名称将用作模块或类的名称（并由其名称和to_s方法返回）。
+#### 对字符串和块进行求值
+Ruby的eval方法是Ruby最强大，最直接的反射功能之一。如果你的Ruby程序可以生成有效的Ruby代码字符串，则Kernel.eval方法可以评估该代码：
+```ruby
+x = 10
+p eval "x + 20"
+```
+eval是一个非常强大的函数，但是除非您实际上正在编写一个执行用户输入的Ruby代码行的shell程序（如irb），否则您不太可能真正需要它。 （在网络环境中，对从用户收到的文本调用eval几乎是不安全的，因为它可能包含恶意代码。）经验不足的程序员有时最终会使用eval作为拐杖。如果您发现自己在代码中使用了它，请查看是否有避免它的方法。话虽如此，还有一些更有用的方法使用eval和类似eval的方法。
+Binding对象表示某个时刻Ruby变量绑定的状态。 Kernel.binding对象返回在调用位置有效的绑定。你可以将Binding对象作为eval的第二个参数传递，并且你指定的字符串将在这些绑定的上下文中进行求值。例如，如果我们定义一个实例方法来返回一个Binding对象，该对象表示一个对象内部的变量绑定，那么我们可以使用这些绑定来查询和设置该对象的实例变量。我们可以这样完成：
+```ruby
+class Object
+   def bindings
+      binding
+   end
+end
+
+class Test
+   def initialize(x)
+      @x = x
+   end
+end
+
+t = Test.new(10)
+p eval("@x", t.bindings) # 10
+
+
+```
+如Closures和Bindings中所述，Proc对象定义了一个公共绑定方法，该方法返回一个Binding对象，该对象表示对该Proc主体有效的变量绑定。此外，eval方法允许你传递Proc对象而不是Binding对象作为第二个参数。
+Ruby 1.9在Binding对象上定义了一个eval方法，因此不必将Binding作为第二个参数传递给全局eval，而可以在Binding上调用eval方法。可以根据需要选择其中一种方式；这两种技术是等效的。
+
+#### instance_eval和class_eval
+Object类定义一个名为instance_eval的方法，而Module类定义一个名为class_eval的方法。 （module_eval是class_eval的同义词。）这两个方法都像eval一样计算Ruby代码，但是有两个重要的区别。第一个区别是它们在指定对象的上下文中或在指定模块的上下文中对代码进行评估—对象或模块是评估代码时self的值。这里有些例子
+```ruby
+t = Test.new(10)
+p t.instance_eval "@x" # 返回实例变量的值
+
+
+String.class_eval "def len; size; end"
+p "hello world".len # 字符串长度 11
+
+String.class_eval "alias len2 size"
+p "hello world".len2 # 11
+
+String.instance_eval "def empty; ''; end"
+p String.empty # ''
+
+```
+请注意，当要计算的代码包含方法定义时，instance_eval和class_eval之间的细微但至关重要的区别。 instance_eval定义对象的单例方法（当在类对象上调用它时，将产生类方法）。 class_eval定义常规实例方法。
+```ruby
+greet = "hello world"
+greet.instance_eval "def hi; p 'hi'; end"
+greet.hi
+```
+这两种方法与全局eval之间的第二个重要区别是instance_eval和class_eval可以接受一段代码进行计算。当传递块而不是字符串时，将在适当的上下文中执行块中的代码。因此，这里是先前显示的调用的替代方法：
+```ruby
+greet.instance_eval do # 为对象定义一个单实例方法
+   def hello
+      print "hello world\n"
+   end
+end
+greet.hello
+
+String.class_eval do  # 定义新的实例方法
+   def good
+      print "good\n"
+   end
+end
+
+String.new.good
+
+t = Test.new(10)
+p t.instance_eval { @x }
+
+String.class_eval { def len; size; end }
+p "hello world".len # 字符串长度 11
+
+String.class_eval { alias len2 size }
+p "hello world".len2 # 11
+
+String.instance_eval { def empty; ''; end }
+p String.empty # ''
+
+greet = "hello world"
+greet.instance_eval { def hi; p 'hi'; end }
+
+
+```
+#### instance_exec和class_exec
+Ruby 1.9定义了另外两种计算方法：instance_exec和class_exec（及其别名module_exec）。这些方法和instance_eval和class_eval那样，在接收器对象的上下文中评估代码块（而不是字符串）。区别在于exec方法接受参数并将其传递给块。因此，代码块是在指定对象的上下文中使用来自对象外部的参数进行计算的。
+```ruby
+t = Test.new(10)
+p t.instance_eval { @x }
+
+back = t.instance_exec(10) { |var|
+   @x + var
+}
+
+p back
+
+Foos.class_exec do
+   def greet2
+      puts "hello matz"
+   end
+end
+```
+#### 变量和常量
+内核，对象和模块定义了反射方法，用于列出所有已定义的全局变量，当前定义的局部变量，对象的所有实例变量，类或模块的所有类变量以及类或模块的所有常量的名称.
+```ruby
+p global_variables #=> ["$DEBUG", "$SAFE", ...]
+
+a = 10
+p local_variables #=> 先前定义了本地变量a，因此结果为[:a]  
+```
+```ruby
+class Foo
+   def initialize(x,y); @x, @y = x, y; end
+   @@classvar = 1 # 定义类变量
+   ORIGIN = Foo.new(1, 2) # 定义常量
+end
+
+p Foo::ORIGIN.instance_variables 
+p Foo.class_variables
+p Foo.constants
+
+output:
+# [:@x, :@y]
+# [:@@classvar]
+# [:ORIGIN]
+```
+global_variables，local_variables，instance_variables，class_variables和constants方法在Ruby 1.8中返回字符串数组，在Ruby 1.9中返回符号数组。
+#### 查询，设置和测试变量
+除了列出定义的变量和常量，ruby的Object和Module类也定义了用来查询，设置和移除实例变量，类变量和常量的反射方法。没有特殊的函数用来设置全局变量和局部变量，但是可以使用eval方法来实现这个目的：
+```ruby
+x = 1
+varname = "x"
+eval(varname)  # 1
+eval('varname = "$g"') #  varname = $g
+eval("#{varname} = x") #  $g = 1
+eval(varname)          # 1
+```
+请注意，eval在一个临时范围内评估其代码。 eval可以更改已经存在的局部变量的值。但是，由评估代码定义的任何新局部变量对于eval调用而言都是局部的，并且在返回时不再存在。 （就像所评估的代码在块的主体中​​运行一样，块本地的变量在块外部不存在。）
+可以查询，设置和测试任何对象上的实例变量以及任何类或模块上的类变量和常量：
+```ruby
+o = Object.new
+o.instance_variable_set(:@x, 10)
+puts o.instance_variable_defined? :@x
+puts o.instance_variable_get :@x
+Object.class_variable_set :@@x, 11
+puts Object.class_variable_defined? :@@x
+puts Object.class_variable_get :@@x
+
+```
+```ruby
+Math.const_set("HIGH_SCHOOL_PI", 22.0/7.0)   #=> 3.14285714285714
+Math::HIGH_SCHOOL_PI - Math::PI              #=> 0.00126448926734968
+
+Object.const_set('foobar', 42)               #=> NameError: wrong constant name foobar
+```
+在Ruby 1.9中，你可以将false作为第二个参数传递给const_get和const_defined?。指定这些方法应仅查看当前类或模块，而不应考虑继承的常量。
+对象和模块定义用于undefining实例变量，类变量和常量的私有方法。它们都返回删除的变量或常量的值。由于这些方法是私有的，因此你不能直接在对象，类或模块上调用它们，而必须使用eval方法或send方法
+```ruby
+puts o.instance_eval { remove_instance_variable :@x } 
+puts Object.class_eval { remove_class_variable :@@x } 
+
+puts Object.__send__(:remove_const, :VAR) #也可以使用send方法来实现
+```
+当引用未定义的常量时，将调用模块的const_missing方法（如果存在）。你可以定义此方法以返回命名常量的值。 （例如，可以使用此功能来实现自动加载功能，在该功能中，可以按需加载类或模块。）下面是一个简单的示例：
+```ruby
+
+def Symbol.const_missing(name)
+   name
+end
+
+p Symbol::Test # :Test 返回常量的符号名称
+```
+#### 方法
+Object和Module类定义了许多用于列出，查询，调用和定义方法的方法。
+##### 列出和测试方法
+```ruby
+o_str = "hello"
+p o_str.methods # 打印对象的公有方法
+p o_str.public_methods  # 打印对象的公有方法
+p o_str.public_methods(false ) # 排除继承而来的方法
+p o_str.private_methods # 打印对象的私有方法
+p o_str.private_methods(false ) # 排除继承而来的方法
+p o_str.protected_methods # 打印对象受保护的方法
+
+def o_str.single; 1; end # 定义一个单实例方法
+p o_str.singleton_methods  
+```
+也可以向类查询其定义的方法，而不是查询类的实例。模块定义了以下方法。像Object方法一样，它们在Ruby 1.8中返回字符串数组，在1.9中返回符号数组：
+```ruby
+
+String.instance_methods  # 与下面表达式结果相同
+p "s".public_methods
+
+p String.instance_methods(false ) # 与下面表达式的结果相同
+p "s".public_methods(false)
+
+p String.public_instance_methods   # 与下面得到的结果相同
+p String.instance_methods
+
+p String.protected_instance_methods # []
+p String.private_instance_methods(false) # [:initialize, :initialize_copy]
+```
+回想一下，类或模块的类方法是Class或Module对象的单例方法。因此，要列出类方法，请使用Object.singleton_methods：
+```ruby
+class Foo2
+   def self.test2
+
+   end
+end
+
+p Foo2.singleton_methods # [:test2]
+
+p Math.singleton_methods # [:atan2, :cos, :sin, :tan, :acos, :asin,...]
+```
+除了这些列出方法之外，Module类还定义一些谓词，以测试指定类或模块是否定义了命名实例方法：
+```ruby
+String.public_method_defined? :reverse    # true
+String.protected_method_defined? :reverse  # false
+String.private_method_defined? :initialize # true
+String.method_defined? :upcase!             # true
+```
+Module.method_defined？检查命名方法是否定义为公共方法或受保护方法。它的作用与Object.respond_to？基本相同。在Ruby 1.9中，你可以传递false作为第二个参数，以指定不应考虑继承的方法。
+#### 获取方法对象
+要查询特定的命名方法，请在任何对象上调用method或在模块上调用instance_method。前者返回绑定到接收者的可调用方法对象，后者返回UnboundMethod。在Ruby 1.9中，可以通过调用public_method和public_instance_method将搜索范围限制为公共方法。我们在方法对象中介绍了这些方法及其返回的对象：
+```ruby
+
+```
