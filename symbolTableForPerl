@@ -1,0 +1,260 @@
+# Perl中的符号表
+
+## 概念
+
+通常来说，我们写一段代码需要为它提供一个命名空间，这样变量和函数才不会与其他人的变量或者函数产生冲突，反之亦然。
+包是独立于文件的。一个文件通常可以包含多个包，或者一个包可以跨多个文件。通俗来讲包就是perl的模块，通常以.pm结尾，并且在定义一个包时，文件名与包名相同。
+也有极个别情况，文件名与包名不相同，通常发生在一个文件中定义了多个包，所以它有好几个包名，因此文件名与包名不相同。典型的例子就是VMware官方的Perl
+SDK开发模块。
+通常在使用模块化编程时，我们需要学习如何保护不同的代码块，让它们不会意外地破坏其他代码块的变量。每个代码块都属于一个特定的包，包确定了这个代码块中可用的变量和子例程。
+初始的包名为main，在其他编程语言中例如ruby，称为顶层堆栈。我们可以通过package关键字来从当前包切换到另外一个包。当前包确定了要使用哪个符号表来查找变量，子例程，I/O句柄和格式。
+
+## 符号表
+
+包的内容称为符号表。它存储在一个哈希中，这个散列与包同名，不过需要带上两个冒号、因此main包的符号表就为%main\:\:,
+由于main是默认包，Perl提供了%\:\:作为%main\:\:的简写形式。
+类似地，Red\:\:Blue包的符号表名为%Red\:\:Blue\:\:,
+由于main符号表包含所有其他顶层符号表，
+包括它本身，所以%Red\:\:Blue\:\:也就是%main\:\:Red\:\:Blue.
+通常一个符号表包含另一个符号表时，是指它包含另一个符号表的引用。由于main是顶层包，所以它包含它自己的一个引用，所以%main\:\:就等同于%main\:\:main\:\:,以此类推，无穷无尽。。
+
+```perl5
+say map { "$_ => $main::{$_}\n" } keys %main::;
+
+# ARNING_BITS => *main::ARNING_BITS
+# . => *main::.
+# STDERR => *main::STDERR
+# ENV => *main::ENV
+#  => *main::
+# UNIVERSAL:: => *main::UNIVERSAL::
+# E_COMPILE_RECURSION_LIMIT => *main::E_COMPILE_RECURSION_LIMIT                                                                                                      => *main::
+# feature:: => *main::feature::
+# version:: => *main::version::
+# INC => *main::INC
+# stdin => *main::stdin
+# _ => *main::_
+# " => *main::"
+# ARGV => *main::ARGV
+# warnings:: => *main::warnings::
+#  => *main::
+# STDIN => *main::STDIN
+#  => *main::
+# Regexp:: => *main::Regexp::
+# constant:: => *main::constant::
+# stderr => *main::stderr
+# Carp:: => *main::Carp::
+# , => *main::,
+# 1 => *main::1
+# PerlIO:: => *main::PerlIO::
+# mro:: => *main::mro::
+# DynaLoader:: => *main::DynaLoader::
+# Exporter:: => *main::Exporter::
+#  => *main::
+# / => *main::/
+# IO:: => *main::IO::
+# strict:: => *main::strict::
+# utf8:: => *main::utf8::
+# Internals:: => *main::Internals::
+# stdout => *main::stdout
+# BEGIN => *main::BEGIN
+# STDOUT => *main::STDOUT
+# main:: => *main::main::
+# @ => *main::@
+# 0 => *main::0
+# DB:: => *main::DB::
+# 
+# AST_FH => *main::
+#                  AST_FH
+# 2 => *main::2
+# re:: => *main::re::
+# CORE:: => *main::CORE::
+```
+
+在一个符号表中，每个键值对将一个变量名映射到这个变量的值。键是符号标识符，值是相应的类型团。所以使用*NAME型团记法时，实际上就是在访问散列的值。
+
+```perl5
+*sym = *main::variable
+*sym = $main::{'variable'};
+```
+
+**第一种更加高效一些，因为这会在编译时访问main符号表。如果之前不存在这样的类型团，它还会创建一个新的类型团，第二种则不会。**
+实际上，我们可以使用想要的任何字符串作为符号表散列中的键。不过如果使用一个非标识符，则是不合法的。
+对类型团的赋值是一个别名操作，也就是说:
+
+```perl5
+*dick = *richard;
+```
+
+那么可以通过标识符richard访问的变量，子例程，格式，文件和目录句柄也可以通过dick来访问。如果只是想对某个特定的变量或子例程指定别名，那么可以对一个引用赋值；
+
+```perl5
+our $ricard = 10;
+*dick = \$ricard;
+print $dick; # 10
+```
+
+这会使ricard和dick变成同一个变量。
+Exporter模块从一个包向另一个包导入符号表时就是这样做的。例如:
+
+```perl5
+*SomePack::dick = &otherPack::ricard;
+```
+
+如果在赋值前面加上local，这个别名操作只会持续到当前动态作用域结束。
+可以利用这个机制从子例程获取引用，使指示对象可以作为一个适当的数据类型；
+
+```perl5
+
+sub populate {
+    my %newhash = (
+        km => 20,
+        kg => 70,
+    );
+    return \%newhash;
+}
+
+{
+    no strict;  # 由于没有my声明变量，在stric模式下会产生错误，因此在局部作用域中执行，并且关闭stric模式
+    *unit = populate();
+    say $unit{km}; # 无需解引用，像正常哈希取值一样
+}
+```
+
+```perl5
+{
+    no strict;
+    %units = (miles => 6, stones => 11);
+    filerup(\%units);
+
+
+    sub filerup {
+        local *units = shift;
+        say $units{miles};
+    }
+}
+```
+
+如果不想显示解引用，可以取巧用这种办法，但是my声明的变量由于不在符号表中，因此无法使用这种形式。
+符号表的另外一个用法是建立常量：
+
+```perl5
+*PI = \3.1415926;
+```
+
+这种形式与常量子例程不同，常量子例程在编译时优化。可以用另外两种形式来建立常量：
+
+```perl5
+use constant PI => 3.1415926;
+
+*PI = sub () { 3.1415926 };
+```
+
+将sub {}赋至一个类型团是在运行时为匿名子例程指定名字的一种方法。
+将类型团引用赋至另一个类型团(*sym =
+\*oldvar)等同于赋值整个类型团，因为perl会自动对这个类型团解引用。将类型团设置为一个简单的字符串时，会得到用这个字符串命名的整个类型团，因为perl会在当前符号表中查找这个字符串。下面的代码是等价的，只不过前面两个会在编译时计算符号表记录，而后面两个会在运行时计算；
+
+```perl5
+{
+    no strict;
+    *sym = *oldvar;
+    *sym = \*oldvar;
+    *sym = *{'oldvar'}; #显示符号表查找
+    *sym = "oldvar"; # 隐示符号表查找
+}
+```
+
+完成以下赋值时，只是替换了类型团中的一个引用
+
+```perl5
+{
+    no strict;
+    *sym = \$oldvar;
+    *sym = \@oldvar;
+    *sym = \%oldvar;
+    *sym = \&pippin;
+}
+```
+
+类型团本身可以看做是一种散列，其中包含了对应不同变量类型的记录。在这里，键是固定的，因为类型团只可能包含一个标量，一个数组，一个散列等。不过可以取出单个引用，如下所示:
+
+```perl5
+*pkg::sym{SCALAR} # 等同于\$pkg::sym
+*pkg::sym{ARRAY}  # 等同于\@pkg::sym
+*pkg::sym{HASH}   # 等同于\%pkg::sym
+*pkg::sym{CODE}   # 等同于\&pkg::sym
+*pkg::sym{GLOB}   # 等同于\*pkg::sym
+*pkg::sym{IO}     # 内部文件/目录句柄
+*pkg::sym{NAME}    # "sym" 不是一个引用
+*pkg::sym{PACKAGE} # "pkg" 不是一个引用
+
+```
+
+可以用\*foo{PACKAGE}和\*foo{NAME}查找\*foo符号表记录来自哪个包和名字。对于传入类型团作为参数的子例程来说，这可能很有用：
+
+```perl5
+{
+    sub identify_typeglob {
+        my $glob = shift;
+        say "You gave me " . *{$glob}{PACKAGE} . "::" . *{glob}{NAME};
+    }
+
+    identify_typeglob(*glob); # You gave me main::glob
+}
+```
+
+## 符号表引用
+
+写程序时，我们可能不知道需要什么类型的引用。引用可以使用一些特殊的方式创建，这称为\*foo{THING},
+它会返回\*foo中THING槽的引用，这是一个符号表记录，其中包含$foo, %foo,
+@foo等的值。
+
+```perl5
+
+$scalar_ref = *foo{SCALAR}; # 等同于\$foo
+$array_ref = *foo{ARRAY}; # 等同于\@foo
+$hash_ref = *foo{HASH};   # 等同于\%foo
+$code_ref = *foo{CODE};   # 等同于\*foo
+$glob_ref = *foo{GLOB};   # 等同于\&foo
+$io_ref = *STDIN{IO};     # ...
+$format = *foo{FORMAT};   # ...
+```
+\*foo{FORMAT}可以得到使用format语句声明的对象，利用它们做不了太多有趣的事情。
+另一方面\*STDIN{IO}会得到类型团包含的具体的内部IO\:\:Handle对象，也就是说，类型团中各个I/O函数真正感兴趣的部分。
+理论上讲只要是\\*HANDLE或\*HADNLE的地方都可以使用\*HANDLE{IO}, 如向子例程传入或从子例程传出句柄，或者将它们存储在更大的数据结构中。它们的好处是只访问你想要的实际I/O对象，而不是整个类型团，所以不用担心类型团赋值会遇到太大的风险。
+```perl5
+slutter(*STDIN); slutter(*STDIN{IO});
+sub slutter {
+    my $fh = shift; print $fh "her um well a hmmm\n";
+}
+```
+以上两种调用形式结果完全相同
+如果编译器还没有看到特定的THING，\*foo{THING}会返回undef，除非THING是SCALAR。\*foo{SCALAR}会返回一个匿名变量引用，即使编译器没有看到$foo。perl总是为类型团增加一个标量，把这作为一个优化措施，以减少别处代码。
+
+## 简单的方法
+利用Package\:\:Stash在包中创建类型团或者获取符号表
+```perl5
+{
+    # 以下代码是利用Package::Stash模块来在main包中创建了*camel类型团
+    no strict;
+    use Package::Stash;
+    my $foo_stash = Package::Stash->new("main");
+    $foo_stash->add_symbol('$camel', 'Amelia');
+    say $main::camel; # Amelia
+    say $camel; # Amelia
+    say *camel{SCALAR}->$*; # Amelia
+}
+
+
+```
+获取当前包的符号表
+```perl5
+{
+    use Package::Stash;
+    my $foo_stash = Package::Stash->new("main");
+    my $main_stash = $foo_stash->get_all_symbols;
+    for my $key (keys %$main_stash) {
+        say "$key => " . $main_stash->{$key};
+    }
+}
+```
+*Note: strict对\*foo并不起作用，它只对$foo和@foo等管用，因此为了消除错误警报，需要提前声明变量或者局部关闭变量检查，no strict 'vars';*
