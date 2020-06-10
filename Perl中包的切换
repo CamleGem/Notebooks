@@ -1,0 +1,54 @@
+# 包的切换
+### 当前包既是一个编译时概念也是一个运行时概念。大多数变量名的查找都发生在编译时，不过对符号引用解引用时，以及在eval下编译新代码时，会发生运行时查找。
+未用my声明的所有变量都与一个包关联，甚至类似$_和%SIG等看上去无所不在的变量也是如此。其他变量都使用当前包，除非加了限定：
+```
+$name = "Amelia";
+$Animal::name = "Camel";
+```
+package声明会改变作用域其余部分（块，文件或eval，要看哪一个最先出现）的默认包，或者直到出现同级的另一个包声明，它会覆盖之前的声明（这是一种常见的做法）:
+```perl5
+package Animal;
+$name = "Camel"; # $Animal::name
+```
+特别强调的一点是，package不会创建作用域，所以它不会隐藏相同作用域中的词法作用域变量：
+```perl5
+my $type = "Camel";
+package Animal;
+print "Type is $type\n"; # 词法作用域变量$type, 因此为"Camel"
+$type = "Ram";
+
+package Zoo;
+print "Type is $type\n"; # 词法作用域变量$type, 因此为"Ram"
+```
+要想优先使用同名变量的包版本作为相同作用域中的词法作用域变量，需要使用our。不过要注意，这会使当前包的变量成为作用域其余部分的默认变量，即使默认包改变也是如此：
+```perl5
+my $type = "Camel";
+package Animal;
+our $type = "Ram";
+print "Type is $type\n"; # 当前包$type, 因此为"Ram"
+
+
+package Zoo;
+print "Type is $type\n";  # Animal $type, 因此为"Ram"
+
+package main;
+print "Type is $type\n"; # 切换回main。依然是"Ram"
+```
+在包Zoo中, $type仍是$Animal::type版本。our将应用于作用域的其余部分，而不是包声明的其余部分。这有点让人糊涂。要记住，包只改变默认包名，它不会结束或开始作用域。一旦改变了包，所有后续的未声明的标识符都会放在当前包的符号表中。如此而已。
+一般地，package声明往往是将由require或use加载的文件中的第一个语句。不过这不是绝对的，这只是一般约定，完全可以package声明放在任何地方，能放语句的地方都可以放package声明。甚至可以把它放在块的末尾，只是这种情况没有任何作用。可以在多个地方切换包；包声明只是在为代码块的其余部分选择编译时使用哪个符号表。利用这种方法，一个包可以跨多个文件。
+可以在包声明行中指定包的版本:
+```
+package Zoo v3.14;
+```
+另外也可以在加括号的形式。这将会包的作用域限制为仅在代码块内部。通过这种特性，可以避免之前提到的名字外溢问题：
+```perl5
+my $type = "Camel";
+package Animal {
+    our $type = "Ram"; 
+    print "Type is $type\n"; # 当前包，所以为Ram，由于代码块是词法作用域，因此超出代码块以后，作用域不可见，因此$type变量消失
+}
+
+package Zoo {
+    print "Type is $type\n"; # 外部type，所以为Camel
+}
+```
