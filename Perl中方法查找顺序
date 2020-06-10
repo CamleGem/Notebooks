@@ -1,0 +1,11 @@
+# Perl中方法查找的顺序
+### 在一个类型为classname的调用者上调用一个名为methname的方法时，Perl会尝试6种不同的方法来找到要调用的子例程：
+1. 首先，Perl在调用者自己的包中查找一个名为classname\:\:methname的子例程。如果失败，则继续进入第二步查找。
+2. 接下来，Perl检查从基类继承的方法，在@classname::ISA中所列出的所有的parent包中查找parent\:\:methname子例程。这里会从左向右采用深度优先方式递归查找。递归可以确保租父类，曾祖父类，曾曾祖父类等都会搜索到。
+3. 如果失败，Perl查找一个名为UNIVERSAL\:\:methname的子例程。
+4. 如果进入这一步，Perl放弃查找methname，开始查找一个AUTOLOAD。首先，它查找一个名为classname::AUTOLOAD的子例程。
+5. 如果失败，Perl会搜索@classname::ISA中所列出的所有的parent包中查找parent\:\:AUTOLOAD子例程。这里同样会从左向右采用深度优先方式递归查找。
+6. 最后，Perl查找一个名为UNIVERSAL::AUTOLOAD的子例程。
+成功找到第一个子例程时，Perl停止搜索，并调用这个子例程。如果没有子例程，会产生一个异常，这是我们经常看到的一个异常：
+"Can't locate object method "methname" via package "classname".
+
